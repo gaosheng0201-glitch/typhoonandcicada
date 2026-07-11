@@ -1,0 +1,35 @@
+# WeatherNext 2 集合预报摘要（设计：design/weathernext.md）
+# 状态：等待数据集审批。未配置 Secrets 时脚本安静跳过，工作流不报错。
+# 获批后：添加 GCP_SA_KEY / GCP_PROJECT 两个 Secrets，取消 cron 注释。
+
+name: WeatherNext AI forecast
+
+on:
+  workflow_dispatch:
+  # schedule:                    # 每次起报(00/06/12/18z)约 7.5h 后
+  #   - cron: "0 2,8,14,20 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  ai-forecast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run WeatherNext summary
+        env:
+          GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+        run: |
+          pip install --quiet google-cloud-bigquery 2>/dev/null || true
+          python3 fetcher/weathernext.py
+      - name: Commit & push if changed
+        run: |
+          if ! git diff --quiet docs/data/ai 2>/dev/null; then
+            git config user.name "typhoon-data-bot"
+            git config user.email "actions@users.noreply.github.com"
+            git add docs/data/ai
+            git commit -m "data: WeatherNext AI 集合预报摘要"
+            git push
+          fi
