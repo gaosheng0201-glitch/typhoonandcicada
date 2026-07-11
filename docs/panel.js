@@ -132,7 +132,7 @@ const ImpactPanel = (() => {
     const color = LV_STYLE[top.a.level].color;
     const brief = top.a.phase === "during" ? " · 影响进行中"
       : top.a.phase === "after" ? (top.a.postRain24 >= 30 ? " · 已过境，雨未停" : " · 已过境")
-      : top.a.endPoint ? ` · ${fmtTime(top.a.endPoint.time)}结束` : "";
+      : top.a.win && !top.a.win.open ? ` · ${fmtTime(top.a.win.endTs)}结束` : "";
     bar.innerHTML = `
       <span>${locLabel()} · <span class="mini-lv" style="color:${color}">${lv.name}</span></span>
       <span class="bar-right">${top.s.name}${results.length > 1 ? ` 等${results.length}系统` : ""}${brief}</span>`;
@@ -294,24 +294,57 @@ const ImpactPanel = (() => {
       stillInRangeAtEnd = !endPoint && path[path.length - 1].dist < galeR;
     }
 
-    // 雨量：优先数值模式预报在影响窗口内的实际累计（ECMWF/GFS via Open-Meteo）；
-    // 模式数据未就绪时回退到距离衰减演示公式（明确标注）
+    // 本地天气窗口：直接用数值模式逐小时序列判定「风雨何时开始/结束」。
+    // 外围雨带常远早于风圈几何（巴威在温州提前8小时）——几何窗口只作模式缺失时的回退。
     const fdata = P.forecast[`${P.loc.lat},${P.loc.lng}`];
+    let win = null; // {startT,endT,startTs,endTs,src,open}
+    if (inRange.length) {
+      const endP = endPoint || inRange[inRange.length - 1];
+      win = { startT: ptime(inRange[0]), endT: ptime(endP),
+              startTs: inRange[0].time, endTs: endP.time,
+              src: "几何", open: !endPoint && stillInRangeAtEnd };
+    }
     let rain, rainSrc = "演示估算", peakRain = null, peakGust = null;
     if (fdata) {
-      const startT = inRange.length ? ptime(inRange[0]) : Date.now();
-      const endT = (endPoint ? ptime(endPoint) : inRange.length
-        ? ptime(inRange[inRange.length - 1]) : Date.now() + 48 * 3.6e6) + 12 * 3.6e6; // 雨带滞后余量
-      let sum = 0;
+      // 门槛：≥1.5mm/h 的实质降雨或≥8级阵风才算「台风风雨」；
+      // 间断>6小时即分段，只取包含台风最近时刻的那段——把梅雨和事后零星降雨排除在归因外
+      const RAIN_ON = 1.5, GUST_ON = 62, GAP_H = 6;
+      const anchor = ptime(closest);
+      const lo = anchor - 36 * 3.6e6, hi = anchor + 48 * 3.6e6;
+      const segs = [];
+      let cur = null;
       for (let i = 0; i < fdata.t.length; i++) {
-        if (fdata.t[i] < startT || fdata.t[i] > endT) continue;
-        sum += fdata.p[i] || 0;
-        if (!peakRain || (fdata.p[i] || 0) > peakRain.v) peakRain = { ts: fdata.ts[i], v: fdata.p[i] || 0 };
-        if (!peakGust || (fdata.g[i] || 0) > peakGust.v) peakGust = { ts: fdata.ts[i], v: fdata.g[i] || 0 };
+        if (fdata.t[i] < lo || fdata.t[i] > hi) continue;
+        if ((fdata.p[i] || 0) >= RAIN_ON || (fdata.g[i] || 0) >= GUST_ON) {
+          if (cur && fdata.t[i] - fdata.t[cur.iL] > GAP_H * 3.6e6) { segs.push(cur); cur = null; }
+          if (!cur) cur = { iF: i, iL: i };
+          else cur.iL = i;
+        }
       }
-      rain = Math.round(sum);
+      if (cur) segs.push(cur);
+      // 选包含 anchor 的段；都不包含则选离 anchor 最近的
+      let seg = segs.find((sg) => fdata.t[sg.iF] <= anchor && anchor <= fdata.t[sg.iL] + GAP_H * 3.6e6);
+      if (!seg && segs.length) {
+        seg = segs.reduce((a2, b2) =>
+          Math.min(Math.abs(fdata.t[a2.iF] - anchor), Math.abs(fdata.t[a2.iL] - anchor)) <
+          Math.min(Math.abs(fdata.t[b2.iF] - anchor), Math.abs(fdata.t[b2.iL] - anchor)) ? a2 : b2);
+      }
+      const iF = seg ? seg.iF : -1, iL = seg ? seg.iL : -1;
+      rain = 0;
+      if (iF >= 0) {
+        win = { startT: fdata.t[iF], endT: fdata.t[iL],
+                startTs: fdata.ts[iF].replace("T", " ") + ":00",
+                endTs: fdata.ts[iL].replace("T", " ") + ":00",
+                src: "模式", open: iL >= fdata.t.length - 2 };
+        for (let i = iF; i <= iL; i++) {
+          rain += fdata.p[i] || 0;
+          if (!peakRain || (fdata.p[i] || 0) > peakRain.v) peakRain = { ts: fdata.ts[i], v: fdata.p[i] || 0 };
+          if (!peakGust || (fdata.g[i] || 0) > peakGust.v) peakGust = { ts: fdata.ts[i], v: fdata.g[i] || 0 };
+        }
+      }
+      rain = Math.round(rain);
       rainSrc = "模式预报";
-      if (peakRain && peakRain.v < 1) peakRain = null; // 没有实质降雨就不报峰值
+      if (peakRain && peakRain.v < 1) peakRain = null;
       if (peakGust && peakGust.v < 40) peakGust = null;
     } else {
       rain = closest.dist < 80 ? 260 : closest.dist < 150 ? 180
@@ -328,12 +361,11 @@ const ImpactPanel = (() => {
 
     // 阶段：来之前 / 影响进行中 / 已过境。过境 ≠ 结束——残余降雨单独判断（美莎克教训）
     const nowT = Date.now();
-    const phStart = inRange.length ? ptime(inRange[0]) : null;
-    const phEnd = endPoint ? ptime(endPoint)
-      : (inRange.length && !stillInRangeAtEnd ? ptime(inRange[inRange.length - 1]) : null);
     let phase = "approach";
-    if (phStart && nowT >= phStart) phase = "during";
-    if (phEnd && nowT > phEnd) phase = "after";
+    if (win && nowT >= win.startT) {
+      phase = (win.open || nowT <= win.endT) ? "during" : "after";
+    }
+    if (win) durationH = (win.endT - win.startT) / 3.6e6;
     let postRain24 = null;
     if (fdata) {
       postRain24 = 0;
@@ -345,7 +377,7 @@ const ImpactPanel = (() => {
     // 已过境且残余降雨有限时，档位自然回落
     if (phase === "after" && postRain24 !== null && postRain24 < 30) level = Math.min(level, 2);
 
-    return { closest, galeR, inRange, rain, rainSrc, peakRain, peakGust, phase, postRain24,
+    return { closest, galeR, inRange, win, rain, rainSrc, peakRain, peakGust, phase, postRain24,
              level, moveKmh, slowMover, durationH, endPoint, stillInRangeAtEnd };
   }
 
@@ -458,15 +490,15 @@ const ImpactPanel = (() => {
       : "";
 
     let timeBrief;
-    if (a.phase === "during") {
-      timeBrief = `${fmtTime(a.inRange[0].time)}已开始${a.endPoint ? `，预计 ${fmtTime(a.endPoint.time)}基本结束` : a.stillInRangeAtEnd ? "，预报期内持续" : ""}`;
-    } else if (a.phase === "after") {
-      timeBrief = `已于 ${fmtTime((a.endPoint || a.inRange[a.inRange.length - 1]).time)} 基本结束` +
+    if (a.win && a.phase === "during") {
+      timeBrief = `${fmtTime(a.win.startTs)}已开始${a.win.open ? "，预报期内持续" : `，预计 ${fmtTime(a.win.endTs)}基本结束`}`;
+    } else if (a.win && a.phase === "after") {
+      timeBrief = `已于 ${fmtTime(a.win.endTs)} 基本结束` +
         (a.postRain24 !== null && a.postRain24 >= 30 ? `，未来24h仍有约 ${a.postRain24} mm 降雨` : "");
+    } else if (a.win) {
+      timeBrief = `${fmtTime(a.win.startTs)}起风雨${a.win.open ? "，预报期内持续" : `，${fmtTime(a.win.endTs)}结束`}`;
     } else {
-      timeBrief = a.inRange.length
-        ? `${fmtTime(a.inRange[0].time)}起风雨${a.endPoint ? `，${fmtTime(a.endPoint.time)}结束` : a.stillInRangeAtEnd ? "，预报期内持续" : ""}`
-        : `距你最近约 ${Math.round(a.closest.dist)} km，以外围影响为主`;
+      timeBrief = `距你最近约 ${Math.round(a.closest.dist)} km，以外围影响为主`;
     }
     box.innerHTML = `
       <div class="lv-badge lv-${globalLevel}"><b>${lv.name}</b>风险参考 · ${locLabel()}</div>
@@ -480,23 +512,23 @@ const ImpactPanel = (() => {
       b.onclick = () => { P.focusTfid = b.dataset.tf; renderResult(); };
     });
 
-    // 时间线（区分已发生/未发生）
+    // 时间线（区分已发生/未发生；时间窗来自本地逐时天气序列，几何仅回退）
     const nowT = Date.now();
-    const past = (p) => ptime(p) < nowT;
     const tl = [];
-    if (a.inRange.length) {
-      tl.push([fmtTime(a.inRange[0].time), past(a.inRange[0]) ? "风雨已开始" : "风雨开始加强"]);
-      tl.push([fmtTime(a.closest.time), past(a.closest)
-        ? `最强时段已过（最近约 ${Math.round(a.closest.dist)} km）`
-        : `最近约 ${Math.round(a.closest.dist)} km，影响最强`]);
-      if (a.endPoint) tl.push([fmtTime(a.endPoint.time), past(a.endPoint) ? "风雨已基本结束" : "预计风雨基本结束"]);
-      else if (a.stillInRangeAtEnd) tl.push(["", "<b>预报期内未移出影响范围</b>"]);
+    if (a.win) {
+      tl.push([fmtTime(a.win.startTs), a.win.startT < nowT ? "风雨已开始" : "预计风雨开始"]);
+      tl.push([fmtTime(a.closest.time), ptime(a.closest) < nowT
+        ? `台风最近时刻已过（约 ${Math.round(a.closest.dist)} km）`
+        : `台风最近约 ${Math.round(a.closest.dist)} km`]);
+      if (a.win.open) tl.push(["", "<b>预报期内未见明显结束信号</b>——警惕累计雨量"]);
+      else tl.push([fmtTime(a.win.endTs), a.win.endT < nowT ? "风雨已基本结束" : "预计风雨基本结束"]);
       if (a.phase === "after" && a.postRain24 !== null && a.postRain24 >= 1) {
         tl.push(["", a.postRain24 >= 30
           ? `<b>未来24小时预计仍有约 ${a.postRain24} mm 降雨</b>——过境不等于结束（模式预报）`
           : `<span class="muted">未来24小时残余降雨约 ${a.postRain24} mm（模式预报）</span>`]);
       }
       if (a.durationH && a.phase === "approach") tl.push(["", `影响持续约 <b>${Math.round(a.durationH)} 小时</b>${a.slowMover ? "（停留型，明显偏长）" : ""}`]);
+      tl.push(["", `<span class="muted">时间窗来源：${a.win.src === "模式" ? "本地逐时数值预报" : "官方路径几何推算"}</span>`]);
     }
     tl.push(["", `预计过程雨量约 <b>${a.rain} mm</b><span class="muted">（${a.rainSrc === "模式预报" ? "数值模式预报" : "演示估算，模式数据加载中"}）</span>`]);
     if (a.peakRain) tl.push([fmtTime(a.peakRain.ts.replace("T", " ")), `本地雨强峰值（约 ${Math.round(a.peakRain.v)} mm/h，模式预报）`]);
