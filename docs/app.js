@@ -46,11 +46,17 @@ const map = new maplibregl.Map({
   zoom: 4,
 });
 
-map.on("load", async () => {
+/* 数据加载不等地图：底图瓦片慢或被墙时，列表/面板照常可用 */
+map.on("load", () => {
   addLayers();
-  await refresh();
-  setInterval(refresh, REFRESH_MS);
+  if (state.storm) {
+    draw();
+    fitToStorm();
+  }
 });
+
+refresh();
+setInterval(refresh, REFRESH_MS);
 
 function addLayers() {
   const empty = { type: "FeatureCollection", features: [] };
@@ -131,14 +137,14 @@ async function loadStorm(tfid, fit = true) {
   renderLegend();
   renderMeta();
   draw();
-  if (fit) fitToStorm();
+  if (fit && map.getSource("track-lines")) fitToStorm();
 }
 
 /* ---------- drawing ---------- */
 
 function draw() {
   const s = state.storm;
-  if (!s) return;
+  if (!s || !map.getSource("track-lines")) return; // 地图未就绪时跳过，load 回调里会补画
 
   const trackLines = [];
   for (let i = 1; i < s.track.length; i++) {
