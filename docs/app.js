@@ -105,7 +105,7 @@ function addLayers() {
   });
   map.addLayer({
     id: "pulse", type: "line", source: "pulse",
-    paint: { "line-color": "#fadb14", "line-width": 2, "line-opacity": 0.5 },
+    paint: { "line-color": "#ea8640", "line-width": 2, "line-opacity": 0.5 },
   });
   map.addLayer({
     id: "track-lines", type: "line", source: "track-lines",
@@ -241,9 +241,9 @@ function draw() {
 /* Quadrant wind-radius polygons for the latest fix. Radii order: NE SE SW NW. */
 function windQuadrants(p) {
   const rings = [
-    { radii: p.r7, color: "#fadb14" },
-    { radii: p.r10, color: "#fa8c16" },
-    { radii: p.r12, color: "#f5222d" },
+    { radii: p.r7, color: "#c9a961" },
+    { radii: p.r10, color: "#ea8640" },
+    { radii: p.r12, color: "#d0442c" },
   ];
   const feats = [];
   // Quadrant start bearings (deg from north, clockwise): NE=0, SE=90, SW=180, NW=270
@@ -343,7 +343,7 @@ function renderMeta() {
   const last = s.track[s.track.length - 1];
   document.getElementById("meta").innerHTML = [
     `实况截至 ${last ? last.time : "—"}`,
-    s.live ? `🟢 实时直连温州台风网（每 5 分钟自动刷新）` : `⚪ 仓库快照数据 ${s.updatedAt}`,
+    s.live ? `实时数据 · 温州台风网 · 每 5 分钟自动刷新` : `快照数据 · ${s.updatedAt}`,
     `预报虚线为各机构最新预报路径`,
   ].join("<br>");
 }

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>台风影响</title>
   <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
-  <link href="style.css?v=6" rel="stylesheet">
+  <link href="style.css?v=7" rel="stylesheet">
 </head>
 <body>
   <div id="map"></div>
@@ -13,7 +13,7 @@
   <!-- 左上：台风数据面板（可收起） -->
   <aside id="panel">
     <div id="panel-head">
-      <h1>🌀 台风数据</h1>
+      <h1>台风数据</h1>
       <button id="panel-toggle" title="收起/展开">«</button>
     </div>
     <div id="panel-body">
@@ -41,7 +41,7 @@
           <select id="sel-prov"></select>
           <select id="sel-city"></select>
           <select id="sel-dist"></select>
-          <button id="btn-geo" title="使用我的位置">📍</button>
+          <button id="btn-geo" title="使用我的位置">定位</button>
         </div>
         <div class="wiz-nav"><span></span><button class="wiz-next" data-to="persona">下一步 →</button></div>
       </div>
@@ -66,12 +66,12 @@
 
       <div class="wiz-step" id="step-result" hidden>
         <div id="impact-summary"></div>
-        <details id="d-timeline"><summary>⏱ 时间线</summary><div></div></details>
-        <details id="d-analog"><summary>📚 历史对照</summary><div></div></details>
-        <details id="d-checklist" open><summary>✅ 现在该做的</summary><div></div></details>
+        <details id="d-timeline"><summary>时间线</summary><div></div></details>
+        <details id="d-analog"><summary>历史对照</summary><div></div></details>
+        <details id="d-checklist" open><summary>现在该做的</summary><div></div></details>
         <div class="wiz-nav">
-          <button class="wiz-back" data-to="region">⚙ 重新设置</button>
-          <button id="share-btn">📤 生成分享卡片</button>
+          <button class="wiz-back" data-to="region">重新设置</button>
+          <button id="share-btn">生成分享卡片</button>
         </div>
         <footer id="disclaimer-mini">
           非官方预警，以气象与应急部门发布为准；涉撤离听从当地政府安排。雨量估算为演示数据。
@@ -92,8 +92,8 @@
   </div>
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-  <script src="data.js?v=6"></script>
-  <script src="panel.js?v=6"></script>
-  <script src="app.js?v=6"></script>
+  <script src="data.js?v=7"></script>
+  <script src="panel.js?v=7"></script>
+  <script src="app.js?v=7"></script>
 </body>
 </html>

@@ -12,10 +12,10 @@ const ImpactPanel = (() => {
     4: { name: "高危", tip: "听从官方转移安排" },
   };
   const LV_STYLE = {
-    1: { color: "#6fdc8c", headline: "预报路径不经过你所在区域", sub: "不必被「超强台风」的标题吓到" },
-    2: { color: "#f0c743", headline: "外围风雨会来，备点吃喝更安心", sub: "影响有限，做基础准备即可" },
-    3: { color: "#ff9d4d", headline: "影响明显，今天完成防台准备", sub: "重点防内涝和停电" },
-    4: { color: "#ff6470", headline: "可能严重受灾，紧盯官方通知", sub: "涉及转移请听从政府安排" },
+    1: { color: "#aaa69f", headline: "预报路径不经过你所在区域", sub: "不必被「超强台风」的标题吓到" },
+    2: { color: "#c9a961", headline: "外围风雨会来，备点吃喝更安心", sub: "影响有限，做基础准备即可" },
+    3: { color: "#ea8640", headline: "影响明显，今天完成防台准备", sub: "重点防内涝和停电" },
+    4: { color: "#d0442c", headline: "可能严重受灾，紧盯官方通知", sub: "涉及转移请听从政府安排" },
   };
 
   const P = {
@@ -112,15 +112,15 @@ const ImpactPanel = (() => {
     const bar = document.getElementById("dock-bar");
     if (!bar) return;
     if (P.open) {
-      bar.innerHTML = `<span>📍 我会不会受灾</span><span class="bar-right">收起 ▾</span>`;
+      bar.innerHTML = `<span>我会不会受灾</span><span class="bar-right">收起</span>`;
       return;
     }
     if (!P.setupDone || !P.regions) {
-      bar.innerHTML = `<span>📍 我会不会受灾？</span><span class="bar-right">30 秒告诉你 ▸</span>`;
+      bar.innerHTML = `<span>我会不会受灾？</span><span class="bar-right" style="color:#ea8640">30 秒告诉你 →</span>`;
       return;
     }
     if (!P.storms.length) {
-      bar.innerHTML = `<span>📍 ${locLabel()}</span><span class="bar-right">当前无活跃台风 ▸</span>`;
+      bar.innerHTML = `<span>${locLabel()}</span><span class="bar-right">当前无活跃台风</span>`;
       return;
     }
     const { results } = assessAll();
@@ -129,8 +129,8 @@ const ImpactPanel = (() => {
     const color = LV_STYLE[top.a.level].color;
     const brief = top.a.endPoint ? ` · ${fmtTime(top.a.endPoint.time)}结束` : "";
     bar.innerHTML = `
-      <span>📍 ${locLabel()} <span class="mini-lv" style="color:${color}">${lv.name} ${"●".repeat(top.a.level)}</span></span>
-      <span class="bar-right">${top.s.name}${results.length > 1 ? ` 等${results.length}系统` : ""}${brief} ▸</span>`;
+      <span>${locLabel()} · <span class="mini-lv" style="color:${color}">${lv.name}</span></span>
+      <span class="bar-right">${top.s.name}${results.length > 1 ? ` 等${results.length}系统` : ""}${brief}</span>`;
   }
 
   /* ---------- 位置选择 ---------- */
@@ -183,7 +183,7 @@ const ImpactPanel = (() => {
   function useMyLocation() {
     if (!navigator.geolocation) return;
     const btn = document.getElementById("btn-geo");
-    btn.textContent = "⏳";
+    btn.textContent = "…";
     navigator.geolocation.getCurrentPosition((pos) => {
       const { latitude: lat, longitude: lng } = pos.coords;
       let best = null, bestD = Infinity;
@@ -200,12 +200,12 @@ const ImpactPanel = (() => {
           }
         }
       }
-      btn.textContent = "📍";
+      btn.textContent = "定位";
       if (best && bestD < 300) {
         P.loc = best;
         buildLocSelects();
       }
-    }, () => { btn.textContent = "📍"; });
+    }, () => { btn.textContent = "定位"; });
   }
 
   function locLabel() {
@@ -217,7 +217,7 @@ const ImpactPanel = (() => {
   function buildPersonaChips() {
     const el = document.getElementById("persona-row");
     el.innerHTML = P.checklists.personas.map((p) =>
-      `<button class="chip ${p.id === P.persona ? "on" : ""}" data-p="${p.id}">${p.icon} ${p.name}</button>`
+      `<button class="chip ${p.id === P.persona ? "on" : ""}" data-p="${p.id}">${p.name}</button>`
     ).join("");
     el.querySelectorAll(".chip").forEach((b) => {
       b.onclick = () => { P.persona = b.dataset.p; P.situations.clear(); persist(); buildPersonaChips(); };
@@ -330,7 +330,7 @@ const ImpactPanel = (() => {
     const box = document.getElementById("impact-summary");
     if (!box || P.step !== "result" || !P.regions) return;
     if (!P.storms.length) {
-      box.innerHTML = `<div class="lv-badge lv-1">当前无活跃台风</div>
+      box.innerHTML = `<div class="lv-badge lv-1"><b>无风</b>当前无活跃台风</div>
         <div class="timebrief">有台风生成时，这里会给出 ${locLabel()} 的风险参考</div>`;
       for (const id of ["d-timeline", "d-analog", "d-checklist"]) {
         document.querySelector(`#${id} > div`).innerHTML = "";
@@ -353,16 +353,16 @@ const ImpactPanel = (() => {
       : "";
 
     const timeBrief = a.inRange.length
-      ? `⏱ ${fmtTime(a.inRange[0].time)}起风雨${a.endPoint ? `，${fmtTime(a.endPoint.time)}结束` : a.stillInRangeAtEnd ? "，预报期内持续" : ""}`
+      ? `${fmtTime(a.inRange[0].time)}起风雨${a.endPoint ? `，${fmtTime(a.endPoint.time)}结束` : a.stillInRangeAtEnd ? "，预报期内持续" : ""}`
       : `距你最近约 ${Math.round(a.closest.dist)} km，以外围影响为主`;
     box.innerHTML = `
-      <div class="lv-badge lv-${globalLevel}">📍 ${locLabel()} · ${lv.name} ${"●".repeat(globalLevel)}${"○".repeat(4 - globalLevel)}</div>
+      <div class="lv-badge lv-${globalLevel}"><b>${lv.name}</b>风险参考 · ${locLabel()}</div>
       ${results.length > 1 ? `<div class="timebrief" style="margin-top:3px">综合 ${results.length} 个台风/残涡系统的最高风险</div>` : ""}
       ${multiRow}
       <div class="headline">${results.length > 1 ? `${s.name}：` : ""}${LV_STYLE[a.level].headline}</div>
       <div class="timebrief">${timeBrief} · 距 ${Math.round(haversine(P.loc.lat, P.loc.lng, last.lat, last.lng))} km</div>
-      ${s.active === false ? `<div class="slow-badge">⚠️ 已停编，但残余环流仍可能强降雨——雨的风险未结束</div>` : ""}
-      ${a.slowMover ? `<div class="slow-badge">🐌 停留型：移速仅约 ${Math.round(a.moveKmh)} km/h，危险在雨不在风</div>` : ""}`;
+      ${s.active === false ? `<div class="slow-badge"><b>残余环流</b> —— 已停编，但残涡仍可能强降雨，雨的风险未结束</div>` : ""}
+      ${a.slowMover ? `<div class="slow-badge"><b>停留型台风</b> —— 移速仅约 ${Math.round(a.moveKmh)} km/h，危险在雨不在风</div>` : ""}`;
     box.querySelectorAll(".storm-chip").forEach((b) => {
       b.onclick = () => { P.focusTfid = b.dataset.tf; renderResult(); };
     });
@@ -380,7 +380,7 @@ const ImpactPanel = (() => {
     const ante = P.antecedent[`${P.loc.lat},${P.loc.lng}`];
     if (ante != null) {
       tl.push(["", ante >= WET_SOIL_MM
-        ? `🌧 过去两周已降 <b>${ante} mm</b>——雨将落在湿透的土地上，建议按上一档准备`
+        ? `过去两周已降 <b>${ante} mm</b> —— 雨将落在湿透的土地上，建议按上一档准备`
         : `<span class="muted">过去两周已降 ${ante} mm（前期偏干）</span>`]);
     }
     document.querySelector("#d-timeline > div").innerHTML =
@@ -439,17 +439,17 @@ const ImpactPanel = (() => {
     canvas.height = H * SCALE;
     const ctx = canvas.getContext("2d");
     ctx.scale(SCALE, SCALE);
-    const F = (w, px) => `${w} ${px}px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif`;
+    const F = (w, px) => `${w} ${px}px Georgia, "Songti SC", "STSong", "SimSun", serif`;
 
     // 背景
     const bg = ctx.createLinearGradient(0, 0, 0, H);
-    bg.addColorStop(0, "#10141f");
-    bg.addColorStop(1, "#0a0d15");
+    bg.addColorStop(0, "#25231f");
+    bg.addColorStop(1, "#1a1916");
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
 
     // 顶栏
-    ctx.fillStyle = "#6b7386";
+    ctx.fillStyle = "#76726a";
     ctx.font = F(600, 21);
     ctx.fillText("台风影响 · TYPHOON IMPACT", 36, 52);
     ctx.textAlign = "right";
@@ -458,7 +458,7 @@ const ImpactPanel = (() => {
 
     /* ---- 示意图 hero：你和台风的空间关系 ---- */
     const hx = 36, hy = 76, hw = W - 72, hh = 400;
-    ctx.fillStyle = "#0b1020";
+    ctx.fillStyle = "#191814";
     roundRect(ctx, hx, hy, hw, hh, 18);
     ctx.fill();
     ctx.save();
@@ -466,7 +466,7 @@ const ImpactPanel = (() => {
     ctx.clip();
 
     // 经纬网底纹
-    ctx.strokeStyle = "rgba(255,255,255,0.045)";
+    ctx.strokeStyle = "rgba(238,236,230,0.05)";
     ctx.lineWidth = 1;
     for (let gx = hx; gx < hx + hw; gx += 56) {
       ctx.beginPath(); ctx.moveTo(gx, hy); ctx.lineTo(gx, hy + hh); ctx.stroke();
@@ -485,9 +485,9 @@ const ImpactPanel = (() => {
 
     // 风圈（7/10/12 级）
     const rings = [
-      { r: last.r7 ? Math.max(...last.r7) : null, c: "240, 199, 67", label: "7级风圈" },
-      { r: last.r10 ? Math.max(...last.r10) : null, c: "250, 140, 22", label: "10级" },
-      { r: last.r12 ? Math.max(...last.r12) : null, c: "245, 34, 45", label: "12级" },
+      { r: last.r7 ? Math.max(...last.r7) : null, c: "170, 166, 159", label: "7级风圈" },
+      { r: last.r10 ? Math.max(...last.r10) : null, c: "201, 169, 97", label: "10级" },
+      { r: last.r12 ? Math.max(...last.r12) : null, c: "234, 134, 64", label: "12级" },
     ];
     for (const ring of rings) {
       if (!ring.r) continue;
@@ -501,7 +501,7 @@ const ImpactPanel = (() => {
     }
     // 7级风圈标注（限制在画框内）
     if (rings[0].r) {
-      ctx.fillStyle = "rgba(240,199,67,0.8)";
+      ctx.fillStyle = "rgba(170,166,159,0.9)";
       ctx.font = F(400, 19);
       const lx = Math.max(hx + 16, stormX - rings[0].r * scalePx * 0.72);
       const ly = Math.max(hy + 30, cy - rings[0].r * scalePx * 0.72);
@@ -511,11 +511,11 @@ const ImpactPanel = (() => {
     // 台风本体：旋涡
     const core = ctx.createRadialGradient(stormX, cy, 2, stormX, cy, 30);
     core.addColorStop(0, "#ffffff");
-    core.addColorStop(0.25, "#ff6470");
-    core.addColorStop(1, "rgba(245,34,45,0)");
+    core.addColorStop(0.25, "#ea8640");
+    core.addColorStop(1, "rgba(208,68,44,0)");
     ctx.fillStyle = core;
     ctx.beginPath(); ctx.arc(stormX, cy, 30, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,0.75)";
+    ctx.strokeStyle = "rgba(238,236,230,0.8)";
     ctx.lineWidth = 2.5;
     for (const off of [0, Math.PI]) {
       ctx.beginPath();
@@ -529,48 +529,48 @@ const ImpactPanel = (() => {
     // 距离近时标签错行，避免与用户标签重叠
     const labelsClose = userX - stormX < 170;
     ctx.lineWidth = 1;
-    ctx.fillStyle = "#ffb3ba";
+    ctx.fillStyle = "#eeece6";
     ctx.font = F(700, 22);
     ctx.textAlign = "center";
     ctx.fillText(`${s.name} ${last.power}级`, stormX, labelsClose ? cy - 44 : cy + 56);
     ctx.textAlign = "left";
 
     // 连线 + 距离
-    ctx.strokeStyle = "rgba(138,176,255,0.8)";
+    ctx.strokeStyle = "rgba(238,236,230,0.5)";
     ctx.setLineDash([7, 6]);
     ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(stormX + 34, cy); ctx.lineTo(userX - 20, cy); ctx.stroke();
     ctx.setLineDash([]);
     const midX = (stormX + userX) / 2;
-    ctx.fillStyle = "#131a2c";
+    ctx.fillStyle = "#25231f";
     roundRect(ctx, midX - 62, cy - 42, 124, 34, 17);
     ctx.fill();
-    ctx.strokeStyle = "rgba(138,176,255,0.5)";
+    ctx.strokeStyle = "#3a3733";
     roundRect(ctx, midX - 62, cy - 42, 124, 34, 17);
     ctx.stroke();
-    ctx.fillStyle = "#cfe0ff";
+    ctx.fillStyle = "#eeece6";
     ctx.font = F(800, 22);
     ctx.textAlign = "center";
     ctx.fillText(`${Math.round(dist)} km`, midX, cy - 18);
     ctx.textAlign = "left";
 
     // 用户位置
-    ctx.fillStyle = "rgba(76,141,255,0.25)";
+    ctx.fillStyle = "rgba(238,236,230,0.16)";
     ctx.beginPath(); ctx.arc(userX, cy, 17, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#4c8dff";
+    ctx.fillStyle = "#eeece6";
     ctx.beginPath(); ctx.arc(userX, cy, 8, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = "#fff";
+    ctx.strokeStyle = "#1a1916";
     ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(userX, cy, 8, 0, Math.PI * 2); ctx.stroke();
     ctx.lineWidth = 1;
-    ctx.fillStyle = "#cfe0ff";
+    ctx.fillStyle = "#eeece6";
     ctx.font = F(700, 22);
     ctx.textAlign = "center";
     ctx.fillText(`你 · ${locLabel()}`, Math.min(userX, hx + hw - 90), cy + 56);
     ctx.textAlign = "left";
 
     // hero 角标
-    ctx.fillStyle = "rgba(255,255,255,0.3)";
+    ctx.fillStyle = "rgba(238,236,230,0.35)";
     ctx.font = F(400, 17);
     ctx.fillText("示意图 · 非精确比例", hx + 16, hy + hh - 14);
     ctx.restore();
@@ -579,7 +579,7 @@ const ImpactPanel = (() => {
     const pillText = `${LEVELS[a.level].name} ${"●".repeat(a.level)}${"○".repeat(4 - a.level)}`;
     ctx.font = F(800, 24);
     const pw = ctx.measureText(pillText).width + 44;
-    ctx.fillStyle = "#10141f";
+    ctx.fillStyle = "#1a1916";
     roundRect(ctx, W - 36 - pw, hy + 14, pw, 46, 23);
     ctx.fill();
     ctx.fillStyle = accent + "33";
@@ -592,10 +592,10 @@ const ImpactPanel = (() => {
     ctx.fillText(pillText, W - 36 - pw + 22, hy + 46);
 
     /* ---- 结论 ---- */
-    ctx.fillStyle = "#ffffff";
+    ctx.fillStyle = "#eeece6";
     ctx.font = F(800, 40);
     wrapText(ctx, LV_STYLE[a.level].headline, 36, 540, W - 72, 52);
-    ctx.fillStyle = "#8b94a8";
+    ctx.fillStyle = "#aaa69f";
     ctx.font = F(400, 22);
     ctx.fillText(a.slowMover ? "停留型台风：移速慢、下得久，危险在雨不在风"
       : "台风强度 ≠ 你受影响的程度，距离和路径才是关键", 36, 596);
@@ -610,43 +610,43 @@ const ImpactPanel = (() => {
     const gw = (W - 72 - 3 * 12) / 4;
     stats.forEach((st2, i) => {
       const gx = 36 + i * (gw + 12), gy = 628;
-      ctx.fillStyle = "#131a2c";
+      ctx.fillStyle = "#26241e";
       roundRect(ctx, gx, gy, gw, 108, 14);
       ctx.fill();
-      ctx.fillStyle = "#e8eaf0";
+      ctx.fillStyle = "#eeece6";
       ctx.font = F(800, st2.v.length > 5 ? 26 : 36);
       ctx.fillText(st2.v, gx + 16, gy + 52);
       if (st2.u) {
-        ctx.fillStyle = "#8b94a8";
+        ctx.fillStyle = "#aaa69f";
         ctx.font = F(600, 20);
         ctx.fillText(st2.u, gx + 18 + ctx.measureText(st2.v).width * (st2.v.length > 5 ? 1.35 : 1.85), gy + 52);
       }
-      ctx.fillStyle = "#6b7386";
+      ctx.fillStyle = "#76726a";
       ctx.font = F(400, 20);
       ctx.fillText(st2.k, gx + 16, gy + 86);
     });
 
     /* ---- 行动建议 ---- */
-    ctx.fillStyle = "#e8eaf0";
+    ctx.fillStyle = "#eeece6";
     ctx.font = F(800, 26);
     ctx.fillText("现在该做的", 36, 796);
     const items = checklistItems(a.level).slice(0, 3);
     items.forEach((item, i) => {
       const iy = 830 + i * 74;
-      ctx.fillStyle = "#131a2c";
+      ctx.fillStyle = "#26241e";
       roundRect(ctx, 36, iy, W - 72, 60, 12);
       ctx.fill();
       ctx.fillStyle = accent;
       roundRect(ctx, 52, iy + 19, 22, 22, 6);
       ctx.fill();
-      ctx.fillStyle = "#c6ccd9";
+      ctx.fillStyle = "#c9c5bc";
       ctx.font = F(400, 23);
       const text = item.length > 26 ? item.slice(0, 25) + "…" : item;
       ctx.fillText(text, 90, iy + 39);
     });
 
     // 底部
-    ctx.fillStyle = "#565e70";
+    ctx.fillStyle = "#76726a";
     ctx.font = F(400, 18);
     ctx.textAlign = "center";
     ctx.fillText("非官方预警 · 以气象部门发布为准 · *雨量为演示估算 · 数据：温州台风网", W / 2, H - 22);
