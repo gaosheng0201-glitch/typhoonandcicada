@@ -133,7 +133,8 @@ const ImpactPanel = (() => {
     const color = LV_STYLE[top.a.level].color;
     const brief = top.a.phase === "during" ? (top.a.easing ? " · 已过峰值，减弱中" : " · 影响进行中")
       : top.a.phase === "after" ? (top.a.postRain24 >= 30 ? " · 已过境，雨未停" : " · 已过境")
-      : top.a.win && !top.a.win.open ? ` · ${fmtTime(top.a.win.endTs)}结束` : "";
+      : top.a.win && !top.a.win.open ? ` · ${fmtTime(top.a.win.endTs)}结束`
+      : top.a.closing ? " · 靠近中，待观察" : "";
     bar.innerHTML = `
       <span>${locLabel()} · <span class="mini-lv" style="color:${color}">${lv.name}</span></span>
       <span class="bar-right">${top.s.name}${results.length > 1 ? ` 等${results.length}系统` : ""}${brief}</span>`;
@@ -400,8 +401,19 @@ const ImpactPanel = (() => {
     // 已过境且残余降雨有限时，档位自然回落
     if (phase === "after" && postRain24 !== null && postRain24 < 30) level = Math.min(level, 2);
 
+    // 远台风趋势：预报期末距离比当前明显拉近 = 正朝你来。
+    // 官方预报只有约5天——「现有预报未覆盖到你」≠「不会来」，绝不能提前安抚
+    let closing = false, fcEndTs = null;
+    if (!win) {
+      const lastFix = s.track[s.track.length - 1];
+      const nowDist = haversine(P.loc.lat, P.loc.lng, lastFix.lat, lastFix.lng);
+      closing = closest.dist < nowDist - 150;
+      if (fc && fc.points.length) fcEndTs = fc.points[fc.points.length - 1].time;
+    }
+
     return { closest, galeR, inRange, win, rain, rainSrc, peakRain, peakGust, phase, postRain24,
-             nowWx, easing, level, moveKmh, slowMover, durationH, endPoint, stillInRangeAtEnd };
+             nowWx, easing, closing, fcEndTs,
+             level, moveKmh, slowMover, durationH, endPoint, stillInRangeAtEnd };
   }
 
   /* 此刻天气的人话描述（小时雨强口径：<2.5 小雨 / <8 中雨 / <16 大雨 / ≥16 暴雨强度） */
@@ -420,6 +432,7 @@ const ImpactPanel = (() => {
         ? "台风已过境，但雨还没停——警惕滞后内涝与山洪"
         : "台风已过境，恢复期注意安全";
     }
+    if (!a.win && a.closing) return "台风还远，是否影响你尚无法判断";
     return LV_STYLE[a.level].headline;
   }
 
@@ -534,6 +547,8 @@ const ImpactPanel = (() => {
         (a.postRain24 !== null && a.postRain24 >= 30 ? `，未来24h仍有约 ${a.postRain24} mm 降雨` : "");
     } else if (a.win) {
       timeBrief = `${fmtTime(a.win.startTs)}起风雨${a.win.open ? "，预报期内持续" : `，${fmtTime(a.win.endTs)}结束`}`;
+    } else if (a.closing) {
+      timeBrief = `正向你的方向移动，现有预报${a.fcEndTs ? `（至 ${fmtTime(a.fcEndTs)}）` : "（约5天）"}尚未覆盖到你——建议每天回来看一眼`;
     } else {
       timeBrief = `距你最近约 ${Math.round(a.closest.dist)} km，以外围影响为主`;
     }
@@ -570,6 +585,9 @@ const ImpactPanel = (() => {
     }
     if (a.win) {
       tl.push(["", `预计过程雨量约 <b>${a.rain} mm</b><span class="muted">（${a.rainSrc === "模式预报" ? "数值模式预报" : "演示估算，模式数据加载中"}）</span>`]);
+    } else if (a.closing) {
+      tl.push(["", `<b>台风正向你的方向移动</b>，现有预报${a.fcEndTs ? `（至 ${fmtTime(a.fcEndTs)}）` : ""}范围内尚不会影响本地。`]);
+      tl.push(["", `<span class="muted">5 天外的路径不确定性很大——预报每 6 小时更新，请每天回来查看，等它进入预报可判断范围。</span>`]);
     } else {
       tl.push(["", `<span class="muted">本台风预计不会给本地带来明显风雨（最近约 ${Math.round(a.closest.dist)} km，远超其风圈）。本地若有降雨，属于正常天气过程，与该台风无关。</span>`]);
     }
