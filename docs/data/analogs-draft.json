@@ -1,0 +1,1272 @@
+{
+ "version": "draft-2026-07-13",
+ "note": "第二层试点：Top20 台风 × 城市灾情，Haiku 从中文维基抽取，每条含原文引用。状态 pending=待人工审核。审核通过后合入 analogs.json（去掉 quotes/review 字段）。",
+ "skipped": [
+  {
+   "typhoon": {
+    "name": "摩羯",
+    "enName": "Yagi",
+    "tfid": "201814"
+   },
+   "reason": "维基百科条目缺乏具体灾情数字记载，仅含预警信息和登陆地点"
+  },
+  {
+   "typhoon": {
+    "name": "安比",
+    "enName": "Ampil",
+    "tfid": "201810"
+   },
+   "reason": "维基条目无中国大陆具体灾情数据"
+  },
+  {
+   "typhoon": {
+    "name": "桃芝",
+    "enName": "Toraji",
+    "tfid": "200108"
+   },
+   "reason": "大陆灾情记载缺失；台湾灾情详细但无单城市数据"
+  },
+  {
+   "typhoon": {
+    "name": "麦德姆",
+    "enName": "Matmo",
+    "tfid": "201410"
+   },
+   "reason": "缺乏城市级灾情统计"
+  }
+ ],
+ "events": [
+  {
+   "eventId": "200010-bilis-温州",
+   "review": "pending",
+   "typhoon": {
+    "name": "碧利斯",
+    "enName": "Bilis",
+    "tfid": "200010"
+   },
+   "region": {
+    "province": "浙江",
+    "city": "温州"
+   },
+   "hazard": {
+    "rainTotalMm": null,
+    "rainDurationH": null,
+    "peakPower": null,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 2,
+    "flood": "",
+    "power": "",
+    "water": "",
+    "evacuation": "",
+    "note": "龙卷风摧毁乐清20幢房屋，损坏130幢"
+   },
+   "narrative": "2000年碧利斯外围龙卷风袭温州乐清，摧毁20幢房屋、损坏130幢。",
+   "sources": [
+    "zh.wikipedia: 台风碧利斯 (2000年)"
+   ],
+   "quotes": [
+    "与风暴相关的龙卷风吹袭了浙江温州乐清市附近四条村，摧毁了20幢建筑物，另有130幢损坏。",
+    "碧利斯在中国大陆造成最少57人死亡，1077人受伤或失踪。"
+   ]
+  },
+  {
+   "eventId": "200010-bilis-泉州",
+   "review": "pending",
+   "typhoon": {
+    "name": "碧利斯",
+    "enName": "Bilis",
+    "tfid": "200010"
+   },
+   "region": {
+    "province": "福建",
+    "city": "泉州"
+   },
+   "hazard": {
+    "rainTotalMm": null,
+    "rainDurationH": null,
+    "peakPower": null,
+    "landfall": true,
+    "approx": true
+   },
+   "impact": {
+    "level": 3,
+    "flood": "",
+    "power": "",
+    "water": "",
+    "evacuation": "",
+    "note": "二次登陆晋江东石镇；大陆共57死1077伤失"
+   },
+   "narrative": "2000年碧利斯二次登陆福建晋江，中国大陆共57人死亡、1077人伤失。",
+   "sources": [
+    "zh.wikipedia: 台风碧利斯 (2000年)"
+   ],
+   "quotes": [
+    "8月23日UTC4时左右，碧利斯于福建省泉州晋江市东石镇附近作第二次登陆。",
+    "碧利斯在中国大陆造成最少57人死亡，1077人受伤或失踪。"
+   ]
+  },
+  {
+   "eventId": "200417-aere-泉州",
+   "review": "pending",
+   "typhoon": {
+    "name": "艾利",
+    "enName": "Aere",
+    "tfid": "200417"
+   },
+   "region": {
+    "province": "福建",
+    "city": "泉州"
+   },
+   "hazard": {
+    "rainTotalMm": null,
+    "rainDurationH": null,
+    "peakPower": null,
+    "landfall": true,
+    "approx": true
+   },
+   "impact": {
+    "level": 3,
+    "flood": "",
+    "power": "",
+    "water": "",
+    "evacuation": "",
+    "note": "登陆惠安；福建2死，4.7万公顷农田受灾，损失超20亿元"
+   },
+   "narrative": "2004年艾利登陆泉州惠安，福建2人死亡、4.7万公顷农田受灾，损失超20亿元。",
+   "sources": [
+    "zh.wikipedia: 台风艾利 (2004年)"
+   ],
+   "quotes": [
+    "艾利在吹袭福建省期间，导致2人死亡，约有4万7千公顷农田受到破坏，经济损失超过20亿元人民币"
+   ]
+  },
+  {
+   "eventId": "200509-matsa-台州",
+   "review": "pending",
+   "typhoon": {
+    "name": "麦莎",
+    "enName": "Matsa",
+    "tfid": "200509"
+   },
+   "region": {
+    "province": "浙江",
+    "city": "台州"
+   },
+   "hazard": {
+    "rainTotalMm": null,
+    "rainDurationH": null,
+    "peakPower": 12,
+    "landfall": true,
+    "approx": true
+   },
+   "impact": {
+    "level": 4,
+    "flood": "洪涝",
+    "power": "",
+    "water": "",
+    "evacuation": "",
+    "note": "登陆玉环；大陆共3064.2万人受灾、20死，直接损失177.1亿元"
+   },
+   "narrative": "2005年麦莎登陆台州玉环，全国3064.2万人受灾、20人死亡，直接经济损失177.1亿元。",
+   "sources": [
+    "zh.wikipedia: 台风麦莎"
+   ],
+   "quotes": [
+    "8月5日晚19时40分登陆浙江省台州市玉环县沙门镇，中心风力达12级",
+    "台风对中国大陆共造成3064.2万人受灾，20人死亡，直接经济损失人民币177.1亿元"
+   ]
+  },
+  {
+   "eventId": "200706-pabuk-湛江",
+   "review": "pending",
+   "typhoon": {
+    "name": "帕布",
+    "enName": "Pabuk",
+    "tfid": "200706"
+   },
+   "region": {
+    "province": "广东",
+    "city": "湛江"
+   },
+   "hazard": {
+    "rainTotalMm": null,
+    "rainDurationH": null,
+    "peakPower": null,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 4,
+    "flood": "近200年一遇的大洪水",
+    "power": "",
+    "water": "",
+    "evacuation": "",
+    "note": "残余环流致灾——移入内陆后未消散"
+   },
+   "narrative": "2007年帕布残余环流在湛江引发近200年一遇的大洪水——台风「结束」之后的雨灾典型。",
+   "sources": [
+    "zh.wikipedia: 台风帕布 (2007年)"
+   ],
+   "quotes": [
+    "帕布在移入内陆以后，并没有即时完全消散，还引致湛江落下一场近200年一遇的大洪水。"
+   ]
+  },
+  {
+   "eventId": "200808-fung-wong-福州",
+   "review": "pending",
+   "typhoon": {
+    "name": "凤凰",
+    "enName": "Fung-wong",
+    "tfid": "200808"
+   },
+   "region": {
+    "province": "福建",
+    "city": "福州"
+   },
+   "hazard": {
+    "rainTotalMm": null,
+    "rainDurationH": null,
+    "peakPower": null,
+    "landfall": true,
+    "approx": true
+   },
+   "impact": {
+    "level": 3,
+    "flood": "强降雨",
+    "power": "",
+    "water": "",
+    "evacuation": "",
+    "note": "登陆福清东瀚镇；闽浙两省153.55万人受灾，经济损失9.23亿元"
+   },
+   "narrative": "2008年凤凰登陆福清，闽浙两省153.55万人受灾、房屋倒塌261间，经济损失9.23亿元。",
+   "sources": [
+    "zh.wikipedia: 强台风凤凰 (2008年)"
+   ],
+   "quotes": [
+    "凤凰于7月28日22时于福建省福清市东瀚镇登陆",
+    "凤凰带来的强降雨，已造成福建、浙江两省目前已有33个县357个乡镇153.55万人受灾，倒塌房屋261间，农田受灾47.14千公顷，直接经济损失9.23亿元人民币"
+   ]
+  },
+  {
+   "eventId": "201513-soudelor-莆田",
+   "review": "pending",
+   "typhoon": {
+    "name": "苏迪罗",
+    "enName": "Soudelor",
+    "tfid": "201513"
+   },
+   "region": {
+    "province": "福建",
+    "city": "莆田"
+   },
+   "hazard": {
+    "rainTotalMm": null,
+    "rainDurationH": null,
+    "peakPower": 12,
+    "landfall": true,
+    "approx": true
+   },
+   "impact": {
+    "level": 4,
+    "flood": "",
+    "power": "超过200万户停电",
+    "water": "",
+    "evacuation": "",
+    "note": "福建9死4失踪，全省直接经济损失超97亿元"
+   },
+   "narrative": "2015年苏迪罗在莆田登陆，福建超200万户停电、9死4失踪，经济损失超97亿元。",
+   "sources": [
+    "zh.wikipedia: 台风苏迪罗 (2015年)"
+   ],
+   "quotes": [
+    "登陆近莆田，每小时137公里的风速",
+    "最少9死、4人失踪",
+    "福建省直接经济损失超过97亿元",
+    "超过200万户停电"
+   ]
+  },
+  {
+   "eventId": "201513-soudelor-温州",
+   "review": "pending",
+   "typhoon": {
+    "name": "苏迪罗",
+    "enName": "Soudelor",
+    "tfid": "201513"
+   },
+   "region": {
+    "province": "浙江",
+    "city": "温州"
+   },
+   "hazard": {
+    "rainTotalMm": 752,
+    "rainDurationH": 48,
+    "peakPower": null,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 4,
+    "flood": "文成县仰山乡48小时降雨751.9毫米破纪录，多地内涝",
+    "power": "",
+    "water": "",
+    "evacuation": "",
+    "note": "温州12死4失踪，直接经济损失50.14亿元【转移/受灾人数原文存疑，需人工核对】"
+   },
+   "narrative": "2015年苏迪罗外围在温州文成48小时降雨752毫米破纪录，温州12死4失踪，损失50.14亿元。",
+   "sources": [
+    "zh.wikipedia: 台风苏迪罗 (2015年)"
+   ],
+   "quotes": [
+    "温州市文成县仰山乡测得48小时降雨751.9毫米",
+    "温州市12死、4人失踪",
+    "直接经济损失50.14亿元"
+   ]
+  },
+  {
+   "eventId": "201710-haitang-屏东县",
+   "review": "pending",
+   "typhoon": {
+    "name": "海棠",
+    "enName": "Haitang",
+    "tfid": "201710"
+   },
+   "region": {
+    "province": "台湾",
+    "city": "屏东县"
+   },
+   "hazard": {
+    "rainTotalMm": null,
+    "rainDurationH": null,
+    "peakPower": null,
+    "landfall": true,
+    "approx": true
+   },
+   "impact": {
+    "level": 2,
+    "flood": "",
+    "power": "",
+    "water": "",
+    "evacuation": "",
+    "note": "13年来首个登陆台湾西半部的台风，台湾3人死亡"
+   },
+   "narrative": "2017年海棠登陆屏东枋山，为13年来首个登陆台湾西半部的台风，台湾3人死亡。",
+   "sources": [
+    "zh.wikipedia: 热带风暴海棠 (2017年)"
+   ],
+   "quotes": [
+    "7月30日下午4时40分海棠于屏东县枋山乡枫港登陆",
+    "统计数据显示3人死亡"
+   ]
+  },
+  {
+   "eventId": "201812-jongdari-上海",
+   "review": "pending",
+   "typhoon": {
+    "name": "云雀",
+    "enName": "Jongdari",
+    "tfid": "201812"
+   },
+   "region": {
+    "province": "上海",
+    "city": "上海"
+   },
+   "hazard": {
+    "rainTotalMm": null,
+    "rainDurationH": null,
+    "peakPower": 10,
+    "landfall": true,
+    "approx": true
+   },
+   "impact": {
+    "level": 2,
+    "flood": "车辆泡水",
+    "power": "",
+    "water": "",
+    "evacuation": "撤离13.42万人",
+    "note": "登陆金山区"
+   },
+   "narrative": "2018年云雀登陆上海金山，全市撤离13.42万人，测得十级阵风。",
+   "sources": [
+    "zh.wikipedia: 台风云雀 (2018年)"
+   ],
+   "quotes": [
+    "上海各级的防汛部门共撤离了13.42万人",
+    "南漕东气象站更测得每秒28.4米的十级阵风"
+   ]
+  },
+  {
+   "eventId": "201818-rumbia-上海",
+   "review": "pending",
+   "typhoon": {
+    "name": "温比亚",
+    "enName": "Rumbia",
+    "tfid": "201818"
+   },
+   "region": {
+    "province": "上海",
+    "city": "上海"
+   },
+   "hazard": {
+    "rainTotalMm": null,
+    "rainDurationH": null,
+    "peakPower": null,
+    "landfall": true,
+    "approx": true
+   },
+   "impact": {
+    "level": 2,
+    "flood": "港口关闭，交通中断",
+    "power": "",
+    "water": "",
+    "evacuation": "",
+    "note": "1949年以来第5个西行直接登陆上海的台风"
+   },
+   "narrative": "2018年温比亚登陆上海浦东新区南部，是1949年来第5个西行直接登陆上海的台风，港口停运。",
+   "sources": [
+    "zh.wikipedia: 2018年热带风暴温比亚"
+   ],
+   "quotes": [
+    "登陆地点：浦东新区南部"
+   ]
+  },
+  {
+   "eventId": "201818-rumbia-商丘",
+   "review": "pending",
+   "typhoon": {
+    "name": "温比亚",
+    "enName": "Rumbia",
+    "tfid": "201818"
+   },
+   "region": {
+    "province": "河南",
+    "city": "商丘"
+   },
+   "hazard": {
+    "rainTotalMm": 363.6,
+    "rainDurationH": 24,
+    "peakPower": null,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 3,
+    "flood": "城市内涝严重，房屋倒塌",
+    "power": "",
+    "water": "",
+    "evacuation": "",
+    "note": "24小时降水363.6毫米破1957年纪录，房屋倒塌85户121间"
+   },
+   "narrative": "2018年温比亚过境河南商丘，24小时降水363.6毫米刷新1957年纪录，房屋大量倒塌。",
+   "sources": [
+    "zh.wikipedia: 2018年热带风暴温比亚"
+   ],
+   "quotes": [
+    "商丘市24小时降水量：363.6毫米（破1957年极值）",
+    "房屋损坏：85户121间倒塌"
+   ]
+  },
+  {
+   "eventId": "201818-rumbia-安徽",
+   "review": "pending",
+   "typhoon": {
+    "name": "温比亚",
+    "enName": "Rumbia",
+    "tfid": "201818"
+   },
+   "region": {
+    "province": "安徽",
+    "city": "安徽"
+   },
+   "hazard": {
+    "rainTotalMm": null,
+    "rainDurationH": null,
+    "peakPower": null,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 3,
+    "flood": "大范围内涝，农作物受灾",
+    "power": "",
+    "water": "",
+    "evacuation": "转移3万人",
+    "note": "192.57万人受灾，12人死亡，经济损失18.37亿元"
+   },
+   "narrative": "2018年温比亚影响安徽全省，192.57万人受灾，转移3万人，12人丧生，经济损失18.37亿元。",
+   "sources": [
+    "zh.wikipedia: 2018年热带风暴温比亚"
+   ],
+   "quotes": [
+    "受灾人口：192.57万人",
+    "转移安置：3万人",
+    "伤亡：12人死亡，1人失踪，13人受伤",
+    "直接经济损失：18.37亿元人民币"
+   ]
+  },
+  {
+   "eventId": "201818-rumbia-潍坊",
+   "review": "pending",
+   "typhoon": {
+    "name": "温比亚",
+    "enName": "Rumbia",
+    "tfid": "201818"
+   },
+   "region": {
+    "province": "山东",
+    "city": "潍坊"
+   },
+   "hazard": {
+    "rainTotalMm": null,
+    "rainDurationH": null,
+    "peakPower": null,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 4,
+    "flood": "弥河特大暴雨，寿光遭1974年来最大洪峰",
+    "power": "",
+    "water": "",
+    "evacuation": "",
+    "note": "山东全省508.9万人受灾，26人死亡，1人失踪"
+   },
+   "narrative": "2018年温比亚影响山东，508.9万人受灾，26人死亡，寿光（潍坊）经历1974年来最大洪峰。",
+   "sources": [
+    "zh.wikipedia: 2018年热带风暴温比亚"
+   ],
+   "quotes": [
+    "受灾人口：508.9万人",
+    "伤亡：26人死亡，1人失踪",
+    "寿光遭1974年以来最大洪峰"
+   ]
+  },
+  {
+   "eventId": "201909-lekima-台州",
+   "review": "pending",
+   "typhoon": {
+    "name": "利奇马",
+    "enName": "Lekima",
+    "tfid": "201909"
+   },
+   "region": {
+    "province": "浙江",
+    "city": "台州"
+   },
+   "hazard": {
+    "rainTotalMm": 841,
+    "rainDurationH": null,
+    "peakPower": 16,
+    "landfall": true,
+    "approx": true
+   },
+   "impact": {
+    "level": 4,
+    "flood": "临海城区被淹，洪峰超保证水位",
+    "power": "玉环失电率92%",
+    "water": "",
+    "evacuation": "浙江126万人撤离",
+    "note": "登陆温岭；临海括苍山过程雨量841毫米为浙江历史第二；浙江39死9失踪，损失242.2亿元"
+   },
+   "narrative": "2019年利奇马登陆温岭（16级），临海括苍山雨量841毫米居浙江历史第二，浙江39死9失踪、126万人撤离。",
+   "sources": [
+    "zh.wikipedia: 台风利奇马 (2019年)",
+    "zh.wikipedia: 2019年台风利奇马对中国大陆的影响"
+   ],
+   "quotes": [
+    "利奇马在8月10日凌晨1时45分在浙江省温岭市沿海登陆，登陆时两分钟平均风速为每秒52公尺",
+    "观测到841毫米的降雨（于临海括苍山），位居该省历史第二",
+    "浙江有39死9失踪",
+    "浙江省有667.9万余人受灾，并有126万人撤离"
+   ]
+  },
+  {
+   "eventId": "201909-lekima-上海",
+   "review": "pending",
+   "typhoon": {
+    "name": "利奇马",
+    "enName": "Lekima",
+    "tfid": "201909"
+   },
+   "region": {
+    "province": "上海",
+    "city": "上海"
+   },
+   "hazard": {
+    "rainTotalMm": null,
+    "rainDurationH": null,
+    "peakPower": null,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 2,
+    "flood": "",
+    "power": "",
+    "water": "",
+    "evacuation": "疏散25.3万人",
+    "note": "近五年撤离人数最多的一次，取消航班1776班"
+   },
+   "narrative": "2019年利奇马影响上海，疏散25.3万人为近五年最多，取消航班1776班。",
+   "sources": [
+    "zh.wikipedia: 2019年台风利奇马对中国大陆的影响"
+   ],
+   "quotes": [
+    "上海完成疏散253,000人，是最近五年撤离人数最多的一次",
+    "机场共取消1,776个航班"
+   ]
+  },
+  {
+   "eventId": "201909-lekima-潍坊",
+   "review": "pending",
+   "typhoon": {
+    "name": "利奇马",
+    "enName": "Lekima",
+    "tfid": "201909"
+   },
+   "region": {
+    "province": "山东",
+    "city": "潍坊"
+   },
+   "hazard": {
+    "rainTotalMm": 287,
+    "rainDurationH": null,
+    "peakPower": null,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 3,
+    "flood": "寿光内涝",
+    "power": "",
+    "water": "",
+    "evacuation": "山东18.4万人撤离",
+    "note": "山东全省165.5万人受灾"
+   },
+   "narrative": "2019年利奇马北上影响山东，寿光平均降雨287毫米，全省165.5万人受灾、18.4万人撤离。",
+   "sources": [
+    "zh.wikipedia: 2019年台风利奇马对中国大陆的影响"
+   ],
+   "quotes": [
+    "寿光市平均降雨287.4毫米",
+    "山东省165.5万余人受灾，约有18.4万人撤离"
+   ]
+  },
+  {
+   "eventId": "202106-in-fa-宁波",
+   "review": "pending",
+   "typhoon": {
+    "name": "烟花",
+    "enName": "In-fa",
+    "tfid": "202106"
+   },
+   "region": {
+    "province": "浙江",
+    "city": "宁波"
+   },
+   "hazard": {
+    "rainTotalMm": 1034.3,
+    "rainDurationH": null,
+    "peakPower": null,
+    "landfall": true,
+    "approx": true
+   },
+   "impact": {
+    "level": 4,
+    "flood": "余姚大岚镇累计降雨创历史纪录",
+    "power": "",
+    "water": "",
+    "evacuation": "",
+    "note": "余姚大岚镇累计降雨1034.3毫米，破登陆浙江台风雨量纪录"
+   },
+   "narrative": "2021年烟花登陆浙江，余姚大岚镇累计降雨1034.3毫米，刷新登陆浙江台风降雨纪录。",
+   "sources": [
+    "zh.wikipedia: 台风烟花 (2021年)"
+   ],
+   "quotes": [
+    "余姚大岚镇丁家畈站累计雨量达951毫米，破登陆浙江省的台风期间累计雨量纪录",
+    "后续测站最多记录1034.3毫米降雨量"
+   ]
+  },
+  {
+   "eventId": "202106-in-fa-上海",
+   "review": "pending",
+   "typhoon": {
+    "name": "烟花",
+    "enName": "In-fa",
+    "tfid": "202106"
+   },
+   "region": {
+    "province": "上海",
+    "city": "上海"
+   },
+   "hazard": {
+    "rainTotalMm": null,
+    "rainDurationH": null,
+    "peakPower": null,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 3,
+    "flood": "金山区内河水位创纪录3.92米，最深积水0.5米",
+    "power": "",
+    "water": "",
+    "evacuation": "",
+    "note": "近十年影响上海台风中雨量最多"
+   },
+   "narrative": "2021年烟花影响上海，金山区内河水位达3.92米创纪录，最深积水半米，近十年影响上海台风中雨量最大。",
+   "sources": [
+    "zh.wikipedia: 台风烟花 (2021年)"
+   ],
+   "quotes": [
+    "金山区内河水位达到创纪录的3.92米",
+    "最深积水深度达半米",
+    "近十年影响上海台风中雨量排名第一"
+   ]
+  },
+  {
+   "eventId": "202106-in-fa-安徽",
+   "review": "pending",
+   "typhoon": {
+    "name": "烟花",
+    "enName": "In-fa",
+    "tfid": "202106"
+   },
+   "region": {
+    "province": "安徽",
+    "city": "安徽"
+   },
+   "hazard": {
+    "rainTotalMm": null,
+    "rainDurationH": null,
+    "peakPower": null,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 2,
+    "flood": "广泛受灾",
+    "power": "",
+    "water": "",
+    "evacuation": "",
+    "note": "56万人受灾，经济损失6.5亿元"
+   },
+   "narrative": "2021年烟花影响安徽，56万人受灾，经济损失6.5亿元。",
+   "sources": [
+    "zh.wikipedia: 台风烟花 (2021年)"
+   ],
+   "quotes": [
+    "受灾人口：56万人",
+    "经济损失6.5亿人民币"
+   ]
+  },
+  {
+   "eventId": "202106-in-fa-新竹县",
+   "review": "pending",
+   "typhoon": {
+    "name": "烟花",
+    "enName": "In-fa",
+    "tfid": "202106"
+   },
+   "region": {
+    "province": "台湾",
+    "city": "新竹县"
+   },
+   "hazard": {
+    "rainTotalMm": 351,
+    "rainDurationH": 24,
+    "peakPower": null,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 2,
+    "flood": "",
+    "power": "最多3345户停电",
+    "water": "",
+    "evacuation": "撤离139人",
+    "note": "台湾共101件灾情，主要为路树倒塌和落石"
+   },
+   "narrative": "2021年烟花影响台湾，五峰乡24小时降雨351毫米，全台139人撤离，最多3345户停电。",
+   "sources": [
+    "zh.wikipedia: 台风烟花 (2021年)"
+   ],
+   "quotes": [
+    "五峰乡24小时雨量351毫米",
+    "撤离139人",
+    "最多同时3345户停电",
+    "共101件灾情，主要为路树倒塌"
+   ]
+  },
+  {
+   "eventId": "202203-chaba-阳江",
+   "review": "pending",
+   "typhoon": {
+    "name": "暹芭",
+    "enName": "Chaba",
+    "tfid": "202203"
+   },
+   "region": {
+    "province": "广东",
+    "city": "阳江"
+   },
+   "hazard": {
+    "rainTotalMm": null,
+    "rainDurationH": null,
+    "peakPower": null,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 4,
+    "flood": "",
+    "power": "",
+    "water": "",
+    "evacuation": "",
+    "note": "施工船舶沉没，30人中25人死亡、1人失踪、4人获救"
+   },
+   "narrative": "2022年暹芭登陆广东阳江附近，施工船舶富景001沉没致25人丧生，为重大海难事故。",
+   "sources": [
+    "zh.wikipedia: 台风暹芭 (2022年)"
+   ],
+   "quotes": [
+    "A construction vessel \"Fuj Jing 001\" capsized on July 2nd with 30 personnel aboard, resulting in 25 deaths, 4 survivors, and 1 missing person"
+   ]
+  },
+  {
+   "eventId": "202203-chaba-湛江",
+   "review": "pending",
+   "typhoon": {
+    "name": "暹芭",
+    "enName": "Chaba",
+    "tfid": "202203"
+   },
+   "region": {
+    "province": "广东",
+    "city": "湛江"
+   },
+   "hazard": {
+    "rainTotalMm": null,
+    "rainDurationH": null,
+    "peakPower": null,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 2,
+    "flood": "",
+    "power": "",
+    "water": "",
+    "evacuation": "",
+    "note": "应急响应升至二级，港口关闭，渡轮停运，学校停课"
+   },
+   "narrative": "2022年暹芭影响广东湛江，当地启动二级应急响应，港口停运。",
+   "sources": [
+    "zh.wikipedia: 台风暹芭 (2022年)"
+   ],
+   "quotes": [
+    "The emergency response escalated from Level III to Level II on July 2nd. Zhanjiang: Issued red-level typhoon warning; emergency response elevated to Level II; schools closed; ferry services suspended"
+   ]
+  },
+  {
+   "eventId": "202203-chaba-三亚",
+   "review": "pending",
+   "typhoon": {
+    "name": "暹芭",
+    "enName": "Chaba",
+    "tfid": "202203"
+   },
+   "region": {
+    "province": "海南",
+    "city": "三亚"
+   },
+   "hazard": {
+    "rainTotalMm": null,
+    "rainDurationH": null,
+    "peakPower": 13,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 2,
+    "flood": "多地降雨破纪录",
+    "power": "",
+    "water": "",
+    "evacuation": "",
+    "note": "三亚等地降雨创历史纪录，海南岛近海最大阵风13级"
+   },
+   "narrative": "2022年暹芭过境海南，三亚、琼中、乐东等地降雨破纪录，阵风达13级。",
+   "sources": [
+    "zh.wikipedia: 台风暹芭 (2022年)"
+   ],
+   "quotes": [
+    "7月1日到7月2日早晨，海南遭遇强风暴雨，三亚、琼中、乐东等地降雨破纪录，海南岛近海最大阵风达13级。"
+   ]
+  },
+  {
+   "eventId": "202203-chaba-玉林",
+   "review": "pending",
+   "typhoon": {
+    "name": "暹芭",
+    "enName": "Chaba",
+    "tfid": "202203"
+   },
+   "region": {
+    "province": "广西",
+    "city": "玉林"
+   },
+   "hazard": {
+    "rainTotalMm": null,
+    "rainDurationH": null,
+    "peakPower": null,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 2,
+    "flood": "次生灾害风险（山洪、滑坡）",
+    "power": "",
+    "water": "",
+    "evacuation": "",
+    "note": "直接经济损失7.75亿元（原文为million，需人工核对）"
+   },
+   "narrative": "2022年暹芭影响广西玉林，持续强降雨致山洪滑坡风险高。",
+   "sources": [
+    "zh.wikipedia: 台风暹芭 (2022年)"
+   ],
+   "quotes": [
+    "Direct economic losses reached approximately 7.75 million yuan in Yulin City. Sustained heavy rainfall occurred July 2-5 with risks of flooding, mudslides, and landslides."
+   ]
+  },
+  {
+   "eventId": "202305-doksuri-泉州",
+   "review": "pending",
+   "typhoon": {
+    "name": "杜苏芮",
+    "enName": "Doksuri",
+    "tfid": "202305"
+   },
+   "region": {
+    "province": "福建",
+    "city": "泉州"
+   },
+   "hazard": {
+    "rainTotalMm": null,
+    "rainDurationH": null,
+    "peakPower": null,
+    "landfall": true,
+    "approx": true
+   },
+   "impact": {
+    "level": 4,
+    "flood": "大范围内涝，房屋大量损毁",
+    "power": "",
+    "water": "",
+    "evacuation": "转移16.24万人",
+    "note": "266.69万人受灾，倒塌3357间房屋，经济损失147.55亿元"
+   },
+   "narrative": "2023年杜苏芮登陆福建晋江，266.69万人受灾，转移16.24万人，房屋倒塌3357间，经济损失147.55亿元。",
+   "sources": [
+    "zh.wikipedia: 台风杜苏芮 (2023年)"
+   ],
+   "quotes": [
+    "受灾人数：266.69万人",
+    "紧急转移安置：16.24万人",
+    "房屋损毁：倒塌3,357间，损坏14,998间",
+    "直接经济损失：147.55亿元"
+   ]
+  },
+  {
+   "eventId": "202305-doksuri-北京",
+   "review": "pending",
+   "typhoon": {
+    "name": "杜苏芮",
+    "enName": "Doksuri",
+    "tfid": "202305"
+   },
+   "region": {
+    "province": "北京",
+    "city": "北京"
+   },
+   "hazard": {
+    "rainTotalMm": null,
+    "rainDurationH": null,
+    "peakPower": null,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 4,
+    "flood": "降雨超2012年特大暴雨纪录",
+    "power": "约6万户停电（房山区）",
+    "water": "",
+    "evacuation": "转移52384人",
+    "note": "至少11人死亡，27人失踪——台风残涡致灾的典型案例"
+   },
+   "narrative": "2023年杜苏芮残余环流北上，北京降雨超2012年纪录，11人死亡27人失踪，转移5.2万人——残涡致灾典型。",
+   "sources": [
+    "zh.wikipedia: 台风杜苏芮 (2023年)"
+   ],
+   "quotes": [
+    "降雨量超过2012年特大暴雨纪录",
+    "至少11人死亡、27人失踪",
+    "北京转移受威胁群众：52,384人",
+    "房山区停电：约6万户",
+    "山洪沟道关闭：301处"
+   ]
+  },
+  {
+   "eventId": "202311-haikui-福州",
+   "review": "pending",
+   "typhoon": {
+    "name": "海葵",
+    "enName": "Haikui",
+    "tfid": "202311"
+   },
+   "region": {
+    "province": "福建",
+    "city": "福州"
+   },
+   "hazard": {
+    "rainTotalMm": null,
+    "rainDurationH": null,
+    "peakPower": null,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 4,
+    "flood": "3小时/6小时累计降雨均破历史纪录（破2005龙王纪录），城区多处受淹",
+    "power": "",
+    "water": "",
+    "evacuation": "转移3.6万余人",
+    "note": "直接经济损失约5.5亿元"
+   },
+   "narrative": "2023年海葵残涡在福州3小时/6小时降雨均破历史纪录，转移3.6万人，损失约5.5亿元。",
+   "sources": [
+    "zh.wikipedia: 台风海葵 (2023年)"
+   ],
+   "quotes": [
+    "福州观测站3小时、6小时累计降雨量均打破龙王影响期间的历史纪录",
+    "直接经济损失约5.521亿元",
+    "转移危险区域群众3.6万余人"
+   ]
+  },
+  {
+   "eventId": "202311-haikui-厦门",
+   "review": "pending",
+   "typhoon": {
+    "name": "海葵",
+    "enName": "Haikui",
+    "tfid": "202311"
+   },
+   "region": {
+    "province": "福建",
+    "city": "厦门"
+   },
+   "hazard": {
+    "rainTotalMm": 200.5,
+    "rainDurationH": 24,
+    "peakPower": null,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 3,
+    "flood": "",
+    "power": "",
+    "water": "",
+    "evacuation": "",
+    "note": "24小时降水200.5毫米，为该站历史第7位"
+   },
+   "narrative": "2023年海葵期间厦门24小时降水200.5毫米，居该站历史第7位。",
+   "sources": [
+    "zh.wikipedia: 台风海葵 (2023年)"
+   ],
+   "quotes": [
+    "9月4日8时至9月5日8时，厦门站累计降水达到200.5毫米，是该站点累计降水历史第7位"
+   ]
+  },
+  {
+   "eventId": "202311-haikui-深圳",
+   "review": "pending",
+   "typhoon": {
+    "name": "海葵",
+    "enName": "Haikui",
+    "tfid": "202311"
+   },
+   "region": {
+    "province": "广东",
+    "city": "深圳"
+   },
+   "hazard": {
+    "rainTotalMm": 469,
+    "rainDurationH": 13,
+    "peakPower": null,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 4,
+    "flood": "特大暴雨，破1952年以来4项历史极值",
+    "power": "",
+    "water": "",
+    "evacuation": "",
+    "note": "24小时雨量仅次于2008年6.13特大暴雨——残涡致灾典型"
+   },
+   "narrative": "2023年海葵残涡在深圳降特大暴雨，最大累计469毫米，破1952年以来4项纪录。",
+   "sources": [
+    "zh.wikipedia: 台风海葵 (2023年)"
+   ],
+   "quotes": [
+    "9月7日17时至8日6时，深圳平均雨量202.8毫米，最大累计雨量469.0毫米",
+    "打破了深圳市1952年有气象记录以来4项历史极值",
+    "24小时雨量仅次于2008年6.13特大暴雨"
+   ]
+  },
+  {
+   "eventId": "202403-gaemi-郴州",
+   "review": "pending",
+   "typhoon": {
+    "name": "格美",
+    "enName": "Gaemi",
+    "tfid": "202403"
+   },
+   "region": {
+    "province": "湖南",
+    "city": "郴州"
+   },
+   "hazard": {
+    "rainTotalMm": null,
+    "rainDurationH": null,
+    "peakPower": null,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 4,
+    "flood": "强降雨引发滑坡泥石流，资兴为暴雨中心",
+    "power": "",
+    "water": "",
+    "evacuation": "转移安置9.6万人",
+    "note": "湖南121.6万人受灾，因灾死亡失踪94人——残涡深入内陆致灾典型"
+   },
+   "narrative": "2024年格美残涡深入湖南，郴州等地121.6万人受灾、94人死亡失踪，直接损失86.1亿元。",
+   "sources": [
+    "zh.wikipedia: 台风格美 (2024年)"
+   ],
+   "quotes": [
+    "湖南郴州、衡阳、湘潭等地121.6万人不同程度受灾，因灾死亡失踪94人，紧急转移安置9.6万人，因灾直接损失86.1亿元"
+   ]
+  },
+  {
+   "eventId": "202403-gaemi-赣州",
+   "review": "pending",
+   "typhoon": {
+    "name": "格美",
+    "enName": "Gaemi",
+    "tfid": "202403"
+   },
+   "region": {
+    "province": "江西",
+    "city": "赣州"
+   },
+   "hazard": {
+    "rainTotalMm": null,
+    "rainDurationH": null,
+    "peakPower": null,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 2,
+    "flood": "暴雨到大暴雨",
+    "power": "",
+    "water": "",
+    "evacuation": "",
+    "note": "江西六市1.4万人受灾"
+   },
+   "narrative": "2024年格美给江西带来暴雨，南昌、九江等六市1.4万人受灾。",
+   "sources": [
+    "zh.wikipedia: 台风格美 (2024年)"
+   ],
+   "quotes": [
+    "赣南、赣中和赣北南部出现暴雨到大暴雨，造成南昌、九江、鹰潭、抚州、上饶、赣州1.4万人受灾"
+   ]
+  },
+  {
+   "eventId": "202413-bebinca-上海",
+   "review": "pending",
+   "typhoon": {
+    "name": "贝碧嘉",
+    "enName": "Bebinca",
+    "tfid": "202413"
+   },
+   "region": {
+    "province": "上海",
+    "city": "上海"
+   },
+   "hazard": {
+    "rainTotalMm": null,
+    "rainDurationH": null,
+    "peakPower": 14,
+    "landfall": true,
+    "approx": true
+   },
+   "impact": {
+    "level": 3,
+    "flood": "道路大量积水",
+    "power": "万余株树木倒伏，多处停电",
+    "water": "",
+    "evacuation": "转移安置41.4万余人",
+    "note": "1949年以来登陆上海的最强台风（14级/42m/s）"
+   },
+   "narrative": "2024年贝碧嘉以14级登陆上海临港，为1949年来登陆上海最强台风，全市转移41.4万人。",
+   "sources": [
+    "zh.wikipedia: 热带风暴贝碧嘉 (2024年)"
+   ],
+   "quotes": [
+    "中国国家气象中心表示贝碧嘉已于上海市浦东新区临港新城沿海登陆，登陆时中心附近最大风力14级（42米/秒）",
+    "截至9月16日0时，上海全市已转移安置41.4万余人，疏散避风船舶811艘次"
+   ]
+  },
+  {
+   "eventId": "202413-bebinca-苏州",
+   "review": "pending",
+   "typhoon": {
+    "name": "贝碧嘉",
+    "enName": "Bebinca",
+    "tfid": "202413"
+   },
+   "region": {
+    "province": "江苏",
+    "city": "苏州"
+   },
+   "hazard": {
+    "rainTotalMm": null,
+    "rainDurationH": null,
+    "peakPower": null,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 2,
+    "flood": "",
+    "power": "线路损坏致触电事故",
+    "water": "",
+    "evacuation": "",
+    "note": "昆山2名居民触电身亡——台风天远离落地电线的教训"
+   },
+   "narrative": "2024年贝碧嘉致江苏昆山10千伏线路落地，2名居民触电身亡。",
+   "sources": [
+    "zh.wikipedia: 热带风暴贝碧嘉 (2024年)"
+   ],
+   "quotes": [
+    "9月16日13时21分，江苏昆山周市镇萧林路和横泾路口10千伏线路受台风影响导线落地，导致途经此处的两名居民触电倒地，经抢救仍告不治"
+   ]
+  }
+ ]
+}
