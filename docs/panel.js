@@ -255,12 +255,16 @@ const ImpactPanel = (() => {
     return items;
   }
 
-  /* 按阶段选清单：来之前=备灾（人群×等级），进行中=避险，过境后=恢复期（含人群补充） */
+  /* 按阶段选清单：远方靠近=出行与安排，来之前=备灾（人群×等级），
+     进行中=避险，过境后=恢复期（含人群补充） */
   function phaseChecklist(a) {
     const ph = P.checklists.phases || {};
     if (a.phase === "during" && ph.during) return ph.during;
     if (a.phase === "after" && ph.after) {
       return ph.after.concat((ph.after_extra || {})[P.persona] || []);
+    }
+    if (a.phase === "approach" && !a.win && a.closing && ph.watch) {
+      return ph.watch.concat((ph.watch_extra || {})[P.persona] || []);
     }
     return checklistItems(a.level);
   }
