@@ -277,7 +277,11 @@ const ImpactPanel = (() => {
       .map((p) => ({ ...p, dist: haversine(P.loc.lat, P.loc.lng, p.lat, p.lng) }));
 
     const closest = path.reduce((a, b) => (b.dist < a.dist ? b : a));
-    const galeR = maxRadius(s.track[s.track.length - 1]) || 350;
+    let galeR = 350;
+    for (let i = s.track.length - 1; i >= Math.max(0, s.track.length - 5); i--) {
+      const r = maxRadius(s.track[i]);
+      if (r) { galeR = r; break; }
+    }
     const inRange = path.filter((p) => p.dist < galeR);
 
     const pts = fc ? fc.points : [];

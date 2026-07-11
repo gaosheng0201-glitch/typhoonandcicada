@@ -71,8 +71,9 @@ let pulseT = 0;
 function animatePulse() {
   if (document.hidden || !state.storm || !map.getSource("pulse")) return;
   const last = state.storm.track[state.storm.track.length - 1];
-  const rMax = last && last.r7 ? Math.max(...last.r7) : null;
-  if (!rMax) return;
+  const rp = lastWithRadius(state.storm.track);
+  const rMax = rp ? Math.max(...rp.r7) : null;
+  if (!rMax || !last) return;
   pulseT = (pulseT + 0.018) % 1;
   const r = rMax * (0.15 + 0.85 * pulseT);
   const ring = [];
@@ -228,14 +229,26 @@ function draw() {
     }
   }
 
+  // 上游常在台风减弱后停发风圈半径——回退到最近带半径的点（圆心仍用当前位置）
   const last = s.track[s.track.length - 1];
-  const windCircles = last ? windQuadrants(last) : [];
+  const rp = lastWithRadius(s.track);
+  const windCircles = last && rp
+    ? windQuadrants({ ...rp, lat: last.lat, lng: last.lng })
+    : [];
 
   setData("track-lines", trackLines);
   setData("track-points", trackPoints);
   setData("fc-lines", fcLines);
   setData("fc-points", fcPoints);
   setData("wind-circles", windCircles);
+}
+
+/* 最近 5 个实况点内最后一个带 7 级风圈数据的点 */
+function lastWithRadius(track) {
+  for (let i = track.length - 1; i >= Math.max(0, track.length - 5); i--) {
+    if (track[i].r7) return track[i];
+  }
+  return null;
 }
 
 /* Quadrant wind-radius polygons for the latest fix. Radii order: NE SE SW NW. */
