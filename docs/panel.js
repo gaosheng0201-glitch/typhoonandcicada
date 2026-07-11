@@ -455,16 +455,22 @@ const ImpactPanel = (() => {
      没有本地案例时只做「量级参考」，不做量化对比（异地不可比）。 */
   function findAnalog(rain) {
     const cityShort = (P.loc.city || "").replace(/(市|地区|自治州|盟)$/, "");
-    const local = P.analogs.events.filter((e) => e.region.city === cityShort);
+    const local = P.analogs.events.filter((e) => e.region.city === cityShort || e.region.city === P.loc.city);
     if (local.length) {
-      local.sort((a, b) => Math.abs(a.hazard.rainTotalMm - rain) - Math.abs(b.hazard.rainTotalMm - rain));
-      return { analog: local[0], local: true };
+      // 量化对比只在有雨量记录的条目中做；全无雨量则取影响最重的一条纯叙述展示
+      const withRain = local.filter((e) => e.hazard.rainTotalMm != null);
+      if (withRain.length) {
+        withRain.sort((a, b) => Math.abs(a.hazard.rainTotalMm - rain) - Math.abs(b.hazard.rainTotalMm - rain));
+        return { analog: withRain[0], local: true, quant: true };
+      }
+      local.sort((a, b) => (b.impact.level || 0) - (a.impact.level || 0));
+      return { analog: local[0], local: true, quant: false };
     }
     const provShort = (P.loc.province || "").replace(/(省|市|壮族自治区|回族自治区|维吾尔自治区|自治区|特别行政区)$/, "");
-    const rest = P.analogs.events.slice().sort((a, b) =>
+    const rest = P.analogs.events.filter((e) => e.hazard.rainTotalMm != null).sort((a, b) =>
       ((a.region.province.startsWith(provShort) ? 0 : 1) * 10000 + Math.abs(a.hazard.rainTotalMm - rain)) -
       ((b.region.province.startsWith(provShort) ? 0 : 1) * 10000 + Math.abs(b.hazard.rainTotalMm - rain)));
-    return { analog: rest[0] || null, local: false };
+    return { analog: rest[0] || null, local: false, quant: false };
   }
 
   /* ---------- 数值模式预报（逐小时降水与阵风） ---------- */
@@ -629,14 +635,19 @@ const ImpactPanel = (() => {
     }
 
     // 历史对照：同城才做量化对比；异地只做量级参考并明说局限
-    const { analog, local } = findAnalog(a.rain);
+    const { analog, local, quant } = findAnalog(a.rain);
     let analogHTML = "";
-    if (analog && local) {
+    if (analog && local && quant) {
       const ratio = a.rain / analog.hazard.rainTotalMm;
       const compare = ratio > 1.3 ? "已超过" : ratio >= 0.7 ? "接近" : `约为其 ${Math.round(ratio * 100)}%，远小于`;
       analogHTML = `
         预计雨量 ${a.rain}mm ${compare}
         <b>${analog.typhoon.tfid.slice(0, 4)}年${analog.typhoon.name}</b>时本地的 ${analog.hazard.rainTotalMm}mm
+        <div class="quote">${analog.narrative}</div>`;
+    } else if (analog && local) {
+      analogHTML = `
+        本地案例：<b>${analog.typhoon.tfid.slice(0, 4)}年${analog.typhoon.name}</b>
+        <span class="muted">（该案例无雨量记录，不作量化对比）</span>
         <div class="quote">${analog.narrative}</div>`;
     } else if (analog && a.rain >= 50 && analog.hazard.rainTotalMm <= a.rain * 2.5 && analog.hazard.rainTotalMm >= a.rain * 0.4) {
       // 异地量级参考：仅当预计雨量可观且与案例确实同量级时才展示
