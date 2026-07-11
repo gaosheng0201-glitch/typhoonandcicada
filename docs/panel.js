@@ -130,7 +130,7 @@ const ImpactPanel = (() => {
     const top = results[0];
     const lv = LEVELS[top.a.level];
     const color = LV_STYLE[top.a.level].color;
-    const brief = top.a.phase === "during" ? " · 影响进行中"
+    const brief = top.a.phase === "during" ? (top.a.easing ? " · 已过峰值，减弱中" : " · 影响进行中")
       : top.a.phase === "after" ? (top.a.postRain24 >= 30 ? " · 已过境，雨未停" : " · 已过境")
       : top.a.win && !top.a.win.open ? ` · ${fmtTime(top.a.win.endTs)}结束` : "";
     bar.innerHTML = `
@@ -366,6 +366,18 @@ const ImpactPanel = (() => {
       phase = (win.open || nowT <= win.endT) ? "during" : "after";
     }
     if (win) durationH = (win.endT - win.startT) / 3.6e6;
+
+    // 此刻锚点：用户对照的是窗外，卡片必须回答「现在」
+    let nowWx = null, easing = false;
+    if (fdata) {
+      let iNow = -1;
+      for (let i = 0; i < fdata.t.length; i++) if (fdata.t[i] <= nowT) iNow = i;
+      if (iNow >= 0) {
+        nowWx = { rain: fdata.p[iNow] || 0, gust: fdata.g[iNow] || 0 };
+        easing = phase === "during" && ptime(closest) < nowT &&
+          nowWx.rain < 1.5 && nowWx.gust < 62;
+      }
+    }
     let postRain24 = null;
     if (fdata) {
       postRain24 = 0;
@@ -378,12 +390,19 @@ const ImpactPanel = (() => {
     if (phase === "after" && postRain24 !== null && postRain24 < 30) level = Math.min(level, 2);
 
     return { closest, galeR, inRange, win, rain, rainSrc, peakRain, peakGust, phase, postRain24,
-             level, moveKmh, slowMover, durationH, endPoint, stillInRangeAtEnd };
+             nowWx, easing, level, moveKmh, slowMover, durationH, endPoint, stillInRangeAtEnd };
+  }
+
+  /* 此刻天气的人话描述 */
+  function nowWxDesc(w) {
+    const r = w.rain < 0.2 ? "基本无雨" : w.rain < 1 ? "零星小雨" : w.rain < 4 ? "小到中雨"
+      : w.rain < 10 ? "大雨" : "暴雨强度";
+    return `${r} · 阵风约${gustLevel(w.gust)}级`;
   }
 
   /* 阶段化标题：不同阶段说不同的话 */
   function headlineFor(a) {
-    if (a.phase === "during") return "风雨影响进行中，减少外出";
+    if (a.phase === "during") return a.easing ? "风雨已过峰值，正在减弱" : "风雨影响进行中，减少外出";
     if (a.phase === "after") {
       return a.postRain24 !== null && a.postRain24 >= 30
         ? "台风已过境，但雨还没停——警惕滞后内涝与山洪"
@@ -506,6 +525,7 @@ const ImpactPanel = (() => {
       ${multiRow}
       <div class="headline">${results.length > 1 ? `${s.name}：` : ""}${headlineFor(a)}</div>
       <div class="timebrief">${timeBrief} · 距 ${Math.round(haversine(P.loc.lat, P.loc.lng, last.lat, last.lng))} km</div>
+      ${a.nowWx ? `<div class="timebrief">此刻本地：${nowWxDesc(a.nowWx)}<span class="muted">（模式实况，以体感为准）</span></div>` : ""}
       ${s.active === false ? `<div class="slow-badge"><b>残余环流</b> —— 已停编，但残涡仍可能强降雨，雨的风险未结束</div>` : ""}
       ${a.slowMover ? `<div class="slow-badge"><b>停留型台风</b> —— 移速仅约 ${Math.round(a.moveKmh)} km/h，危险在雨不在风</div>` : ""}`;
     box.querySelectorAll(".storm-chip").forEach((b) => {
