@@ -77,9 +77,27 @@ html, body { height: 100%; font-family: -apple-system, "PingFang SC", "Microsoft
 
 /* ---------- 内嵌影响评估面板 ---------- */
 
-#panel { width: 330px; }
+#impact-card {
+  position: absolute;
+  top: 12px; right: 12px;
+  width: 340px;
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+  background: rgba(18, 22, 33, 0.94);
+  color: #e8eaf0;
+  border: 1px solid rgba(76, 141, 255, 0.35);
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-size: 13px;
+  z-index: 11;
+  backdrop-filter: blur(6px);
+}
+#impact-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
 
-#impact-section { border-top: 1px solid #232b42; margin-top: 10px; padding-top: 4px; }
+.storm-chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 7px 0 2px; }
+.storm-chip b { margin-left: 3px; }
+
+
 
 #loc-row { display: flex; gap: 4px; margin: 6px 0; }
 #loc-row select {
@@ -144,7 +162,7 @@ html, body { height: 100%; font-family: -apple-system, "PingFang SC", "Microsoft
   line-height: 1.55;
 }
 
-#impact-section details {
+#impact-card details {
   border: 1px solid #232b42;
   border-radius: 9px;
   margin: 6px 0;
@@ -152,8 +170,8 @@ html, body { height: 100%; font-family: -apple-system, "PingFang SC", "Microsoft
   font-size: 12.5px;
   line-height: 1.7;
 }
-#impact-section summary { cursor: pointer; font-weight: 600; color: #c6ccd9; font-size: 12.5px; }
-#impact-section details[open] summary { margin-bottom: 5px; }
+#impact-card summary { cursor: pointer; font-weight: 600; color: #c6ccd9; font-size: 12.5px; }
+#impact-card details[open] summary { margin-bottom: 5px; }
 
 .tl-row { display: flex; gap: 8px; align-items: baseline; padding: 1px 0; }
 .tl-row .t { color: #8ab0ff; font-variant-numeric: tabular-nums; min-width: 62px; font-weight: 600; }

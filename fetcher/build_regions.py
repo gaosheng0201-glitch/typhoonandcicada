@@ -49,6 +49,26 @@ def feats(adcode):
     return out
 
 
+# DataV 无台湾县市数据（710000_full 404），使用静态坐标表补齐
+TAIWAN_CITIES = {
+    "台北市": [25.03, 121.56], "新北市": [25.01, 121.46], "桃园市": [24.99, 121.30],
+    "台中市": [24.14, 120.68], "台南市": [22.99, 120.21], "高雄市": [22.62, 120.31],
+    "基隆市": [25.13, 121.74], "新竹市": [24.80, 120.97], "嘉义市": [23.48, 120.44],
+    "新竹县": [24.83, 121.01], "苗栗县": [24.56, 120.82], "彰化县": [24.05, 120.51],
+    "南投县": [23.96, 120.97], "云林县": [23.71, 120.43], "嘉义县": [23.45, 120.25],
+    "屏东县": [22.55, 120.55], "宜兰县": [24.73, 121.75], "花莲县": [23.99, 121.60],
+    "台东县": [22.75, 121.14], "澎湖县": [23.57, 119.57], "金门县": [24.44, 118.33],
+    "连江县": [26.15, 119.93],
+}
+
+
+def patch_taiwan(regions):
+    tw = regions.get("台湾省")
+    if tw is not None and not tw["cities"]:
+        tw["cities"] = {name: {"lat": lat, "lng": lng, "districts": {}}
+                        for name, (lat, lng) in TAIWAN_CITIES.items()}
+
+
 def main():
     regions = {}
     provinces = feats(100000)
@@ -78,6 +98,7 @@ def main():
         n_d = sum(len(c["districts"]) for c in pnode["cities"].values())
         print(f"  {pname}: {len(pnode['cities'])} cities, {n_d} districts")
 
+    patch_taiwan(regions)
     OUT.write_text(json.dumps(regions, ensure_ascii=False, separators=(",", ":")),
                    encoding="utf-8")
     print(f"wrote {OUT} ({OUT.stat().st_size // 1024} KB)")

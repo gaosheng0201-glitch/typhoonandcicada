@@ -5,33 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>台风影响</title>
   <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
-  <link href="style.css?v=4" rel="stylesheet">
+  <link href="style.css?v=5" rel="stylesheet">
 </head>
 <body>
   <div id="map"></div>
 
+  <!-- 左：数据/操作面板（台风列表、机构、图例） -->
   <aside id="panel">
     <h1>台风影响</h1>
     <div id="storm-list"></div>
-
-    <section id="impact-section">
-      <h2>📍 我会不会受灾</h2>
-      <div id="loc-row">
-        <select id="sel-prov"></select>
-        <select id="sel-city"></select>
-        <select id="sel-dist"></select>
-        <button id="btn-geo" title="使用我的位置">📍</button>
-      </div>
-      <div id="persona-row"></div>
-      <div id="situation-row"></div>
-      <div id="impact-summary"></div>
-
-      <details id="d-timeline"><summary>⏱ 时间线</summary><div></div></details>
-      <details id="d-analog"><summary>📚 历史对照</summary><div></div></details>
-      <details id="d-checklist" open><summary>✅ 现在该做的</summary><div></div></details>
-
-      <button id="share-btn">📤 生成分享卡片</button>
-    </section>
 
     <section>
       <h2>预报机构</h2>
@@ -44,6 +26,26 @@
     </section>
 
     <footer id="meta"></footer>
+  </aside>
+
+  <!-- 右：我会不会受灾（CTA 卡片，全局评估） -->
+  <aside id="impact-card">
+    <h2 id="impact-title">📍 我会不会受灾</h2>
+    <div id="loc-row">
+      <select id="sel-prov"></select>
+      <select id="sel-city"></select>
+      <select id="sel-dist"></select>
+      <button id="btn-geo" title="使用我的位置">📍</button>
+    </div>
+    <div id="persona-row"></div>
+    <div id="situation-row"></div>
+    <div id="impact-summary"></div>
+
+    <details id="d-timeline"><summary>⏱ 时间线</summary><div></div></details>
+    <details id="d-analog"><summary>📚 历史对照</summary><div></div></details>
+    <details id="d-checklist" open><summary>✅ 现在该做的</summary><div></div></details>
+
+    <button id="share-btn">📤 生成分享卡片</button>
     <footer id="disclaimer-mini">
       非官方预警，以气象与应急部门发布为准；涉撤离听从当地政府安排。
       雨量估算为演示数据；前期降雨来自 Open-Meteo。
@@ -61,8 +63,8 @@
   </div>
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-  <script src="data.js?v=4"></script>
-  <script src="panel.js?v=4"></script>
-  <script src="app.js?v=4"></script>
+  <script src="data.js?v=5"></script>
+  <script src="panel.js?v=5"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>

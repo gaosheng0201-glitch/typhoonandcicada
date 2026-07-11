@@ -19,7 +19,8 @@ const ImpactPanel = (() => {
   };
 
   const P = {
-    storm: null,
+    storms: [],        // 全部台风（活跃 + 残涡）——评估是「我与所有台风的关系」
+    focusTfid: null,   // 多台风时用户点选查看的那个；默认跟随最危险的
     regions: null,
     checklists: null,
     analogs: null,
@@ -46,8 +47,8 @@ const ImpactPanel = (() => {
     render();
   }
 
-  function update(storm) {
-    P.storm = storm;
+  function updateAll(storms) {
+    P.storms = (storms || []).filter((s) => s && s.track && s.track.length);
     render();
   }
 
@@ -176,8 +177,7 @@ const ImpactPanel = (() => {
 
   /* ---------- 评估（与原影响页同一逻辑） ---------- */
 
-  function assess() {
-    const s = P.storm;
+  function assess(s) {
     const fc = s.forecasts["中国"] || Object.values(s.forecasts)[0];
     const path = s.track.slice(-4).concat(fc ? fc.points : [])
       .map((p) => ({ ...p, dist: haversine(P.loc.lat, P.loc.lng, p.lat, p.lng) }));
@@ -247,25 +247,57 @@ const ImpactPanel = (() => {
 
   /* ---------- render ---------- */
 
+  /* 全局评估：对每个台风分别评估，全局等级 = 最危险者；
+     多台风时显示分台风摘要行，可点选切换详情焦点。 */
+  function assessAll() {
+    const results = P.storms.map((s) => ({ s, a: assess(s) }));
+    results.sort((x, y) => y.a.level - x.a.level || x.a.closest.dist - y.a.closest.dist);
+    const focus = results.find((r) => r.s.tfid === P.focusTfid) || results[0];
+    return { results, focus };
+  }
+
   function render() {
     const box = document.getElementById("impact-summary");
-    if (!P.storm || !P.regions) { if (box) box.innerHTML = ""; return; }
-    const s = P.storm;
-    const a = assess();
-    const lv = LEVELS[a.level];
-    const st = LV_STYLE[a.level];
+    if (!P.regions || !box) return;
+    if (!P.storms.length) {
+      box.innerHTML = `<div class="lv-badge lv-1">当前无活跃台风</div>
+        <div class="timebrief">有台风生成时，这里会给出你所在位置的风险参考</div>`;
+      for (const id of ["d-timeline", "d-analog", "d-checklist"]) {
+        document.querySelector(`#${id} > div`).innerHTML = "";
+      }
+      return;
+    }
+
+    const { results, focus } = assessAll();
+    const s = focus.s, a = focus.a;
+    const globalLevel = results[0].a.level; // 最危险台风决定全局档位
+    const lv = LEVELS[globalLevel];
+    const st = LV_STYLE[globalLevel];
     const last = s.track[s.track.length - 1];
 
-    // 摘要：等级 + 一句话 + 时间窗（默认唯一可见的部分）
+    // 多台风分行（含残涡）：全局关系一眼可见，点选切换详情
+    const multiRow = results.length > 1
+      ? `<div class="storm-chips">${results.map((r) => `
+          <button class="chip storm-chip ${r.s.tfid === s.tfid ? "on" : ""}" data-tf="${r.s.tfid}">
+            ${r.s.name}${r.s.active === false ? "·残余" : ""}
+            <b style="color:${LV_STYLE[r.a.level].color}">${LEVELS[r.a.level].name}</b>
+          </button>`).join("")}</div>`
+      : "";
+
     const timeBrief = a.inRange.length
       ? `⏱ ${fmtTime(a.inRange[0].time)}起风雨${a.endPoint ? `，${fmtTime(a.endPoint.time)}结束` : a.stillInRangeAtEnd ? "，预报期内持续" : ""}`
       : `距你最近约 ${Math.round(a.closest.dist)} km，以外围影响为主`;
     box.innerHTML = `
-      <div class="lv-badge lv-${a.level}">风险参考：${lv.name} ${"●".repeat(a.level)}${"○".repeat(4 - a.level)}</div>
-      <div class="headline">${st.headline}</div>
+      <div class="lv-badge lv-${globalLevel}">风险参考：${lv.name} ${"●".repeat(globalLevel)}${"○".repeat(4 - globalLevel)}</div>
+      ${results.length > 1 ? `<div class="timebrief" style="margin-top:3px">综合 ${results.length} 个台风/残涡系统的最高风险</div>` : ""}
+      ${multiRow}
+      <div class="headline">${results.length > 1 ? `${s.name}：` : ""}${LV_STYLE[a.level].headline}</div>
       <div class="timebrief">${timeBrief} · 距 ${Math.round(haversine(P.loc.lat, P.loc.lng, last.lat, last.lng))} km</div>
       ${s.active === false ? `<div class="slow-badge">⚠️ 已停编，但残余环流仍可能强降雨——雨的风险未结束</div>` : ""}
       ${a.slowMover ? `<div class="slow-badge">🐌 停留型：移速仅约 ${Math.round(a.moveKmh)} km/h，危险在雨不在风</div>` : ""}`;
+    box.querySelectorAll(".storm-chip").forEach((b) => {
+      b.onclick = () => { P.focusTfid = b.dataset.tf; render(); };
+    });
 
     // 详情一：时间线
     const tl = [];
@@ -315,17 +347,19 @@ const ImpactPanel = (() => {
     document.getElementById("share-close").onclick = () =>
       (document.getElementById("share-modal").style.display = "none");
     document.getElementById("share-save").onclick = () => {
+      const { focus } = assessAll();
       const link = document.createElement("a");
-      link.download = `台风${P.storm.name}-${locLabel()}影响卡.png`;
+      link.download = `台风${focus ? focus.s.name : ""}-${locLabel()}影响卡.png`;
       link.href = document.getElementById("share-canvas").toDataURL("image/png");
       link.click();
     };
   }
 
   function drawShareCard() {
-    if (!P.storm) return;
-    const a = assess();
-    const s = P.storm;
+    if (!P.storms.length) return;
+    const { focus } = assessAll();
+    const a = focus.a;
+    const s = focus.s;
     const last = s.track[s.track.length - 1];
     const lv = LV_STYLE[a.level];
     const analog = findAnalog(a.rain);
@@ -469,5 +503,5 @@ const ImpactPanel = (() => {
     return resp.json();
   }
 
-  return { init, update };
+  return { init, updateAll };
 })();

@@ -127,18 +127,24 @@ async function refresh() {
   if (!state.selected || !storms.some((s) => s.tfid === state.selected)) {
     state.selected = storms[0].tfid;
   }
+  // 全部台风详情（活跃+残涡）交给影响面板做全局评估；地图仍只画选中的
+  const all = (await Promise.all(storms.map((t) =>
+    TyphoonData.loadStorm(t.tfid, state.index.live).catch(() => null)
+  ))).filter(Boolean);
+  state.allStorms = Object.fromEntries(all.map((s) => [s.tfid, s]));
+  ImpactPanel.updateAll(all);
   await loadStorm(state.selected, /*fit=*/ !state.storm);
 }
 
 async function loadStorm(tfid, fit = true) {
   state.selected = tfid;
-  state.storm = await TyphoonData.loadStorm(tfid, state.index.live);
+  state.storm = (state.allStorms && state.allStorms[tfid]) ||
+    await TyphoonData.loadStorm(tfid, state.index.live);
   renderStormList();
   renderAgencyToggles();
   renderLegend();
   renderMeta();
   draw();
-  ImpactPanel.update(state.storm);
   if (fit && map.getSource("track-lines")) fitToStorm();
 }
 
