@@ -130,7 +130,9 @@ const ImpactPanel = (() => {
     const top = results[0];
     const lv = LEVELS[top.a.level];
     const color = LV_STYLE[top.a.level].color;
-    const brief = top.a.endPoint ? ` · ${fmtTime(top.a.endPoint.time)}结束` : "";
+    const brief = top.a.phase === "during" ? " · 影响进行中"
+      : top.a.phase === "after" ? (top.a.postRain24 >= 30 ? " · 已过境，雨未停" : " · 已过境")
+      : top.a.endPoint ? ` · ${fmtTime(top.a.endPoint.time)}结束` : "";
     bar.innerHTML = `
       <span>${locLabel()} · <span class="mini-lv" style="color:${color}">${lv.name}</span></span>
       <span class="bar-right">${top.s.name}${results.length > 1 ? ` 等${results.length}系统` : ""}${brief}</span>`;
@@ -251,6 +253,16 @@ const ImpactPanel = (() => {
     return items;
   }
 
+  /* 按阶段选清单：来之前=备灾（人群×等级），进行中=避险，过境后=恢复期（含人群补充） */
+  function phaseChecklist(a) {
+    const ph = P.checklists.phases || {};
+    if (a.phase === "during" && ph.during) return ph.during;
+    if (a.phase === "after" && ph.after) {
+      return ph.after.concat((ph.after_extra || {})[P.persona] || []);
+    }
+    return checklistItems(a.level);
+  }
+
   /* ---------- 评估 ---------- */
 
   function assess(s) {
@@ -314,8 +326,38 @@ const ImpactPanel = (() => {
     if (rain >= 250 || (closest.dist < 100 && power >= 14)) level = 4;
     if (slowMover && closest.dist < galeR) level = Math.max(level, 3);
 
-    return { closest, galeR, inRange, rain, rainSrc, peakRain, peakGust,
+    // 阶段：来之前 / 影响进行中 / 已过境。过境 ≠ 结束——残余降雨单独判断（美莎克教训）
+    const nowT = Date.now();
+    const phStart = inRange.length ? ptime(inRange[0]) : null;
+    const phEnd = endPoint ? ptime(endPoint)
+      : (inRange.length && !stillInRangeAtEnd ? ptime(inRange[inRange.length - 1]) : null);
+    let phase = "approach";
+    if (phStart && nowT >= phStart) phase = "during";
+    if (phEnd && nowT > phEnd) phase = "after";
+    let postRain24 = null;
+    if (fdata) {
+      postRain24 = 0;
+      for (let i = 0; i < fdata.t.length; i++) {
+        if (fdata.t[i] >= nowT && fdata.t[i] <= nowT + 24 * 3.6e6) postRain24 += fdata.p[i] || 0;
+      }
+      postRain24 = Math.round(postRain24);
+    }
+    // 已过境且残余降雨有限时，档位自然回落
+    if (phase === "after" && postRain24 !== null && postRain24 < 30) level = Math.min(level, 2);
+
+    return { closest, galeR, inRange, rain, rainSrc, peakRain, peakGust, phase, postRain24,
              level, moveKmh, slowMover, durationH, endPoint, stillInRangeAtEnd };
+  }
+
+  /* 阶段化标题：不同阶段说不同的话 */
+  function headlineFor(a) {
+    if (a.phase === "during") return "风雨影响进行中，减少外出";
+    if (a.phase === "after") {
+      return a.postRain24 !== null && a.postRain24 >= 30
+        ? "台风已过境，但雨还没停——警惕滞后内涝与山洪"
+        : "台风已过境，恢复期注意安全";
+    }
+    return LV_STYLE[a.level].headline;
   }
 
   function assessAll() {
@@ -353,7 +395,7 @@ const ImpactPanel = (() => {
         `&hourly=precipitation,wind_gusts_10m&past_days=2&forecast_days=7&timezone=Asia%2FShanghai`);
       P.forecast[key] = {
         ts: d.hourly.time, // 北京钟面原文，用于展示
-        t: d.hourly.time.map((s) => new Date(s).getTime()),
+        t: d.hourly.time.map((s) => new Date(s + ":00+08:00").getTime()),
         p: d.hourly.precipitation,
         g: d.hourly.wind_gusts_10m,
       };
@@ -415,14 +457,22 @@ const ImpactPanel = (() => {
           </button>`).join("")}</div>`
       : "";
 
-    const timeBrief = a.inRange.length
-      ? `${fmtTime(a.inRange[0].time)}起风雨${a.endPoint ? `，${fmtTime(a.endPoint.time)}结束` : a.stillInRangeAtEnd ? "，预报期内持续" : ""}`
-      : `距你最近约 ${Math.round(a.closest.dist)} km，以外围影响为主`;
+    let timeBrief;
+    if (a.phase === "during") {
+      timeBrief = `${fmtTime(a.inRange[0].time)}已开始${a.endPoint ? `，预计 ${fmtTime(a.endPoint.time)}基本结束` : a.stillInRangeAtEnd ? "，预报期内持续" : ""}`;
+    } else if (a.phase === "after") {
+      timeBrief = `已于 ${fmtTime((a.endPoint || a.inRange[a.inRange.length - 1]).time)} 基本结束` +
+        (a.postRain24 !== null && a.postRain24 >= 30 ? `，未来24h仍有约 ${a.postRain24} mm 降雨` : "");
+    } else {
+      timeBrief = a.inRange.length
+        ? `${fmtTime(a.inRange[0].time)}起风雨${a.endPoint ? `，${fmtTime(a.endPoint.time)}结束` : a.stillInRangeAtEnd ? "，预报期内持续" : ""}`
+        : `距你最近约 ${Math.round(a.closest.dist)} km，以外围影响为主`;
+    }
     box.innerHTML = `
       <div class="lv-badge lv-${globalLevel}"><b>${lv.name}</b>风险参考 · ${locLabel()}</div>
       ${results.length > 1 ? `<div class="timebrief" style="margin-top:3px">综合 ${results.length} 个台风/残涡系统的最高风险</div>` : ""}
       ${multiRow}
-      <div class="headline">${results.length > 1 ? `${s.name}：` : ""}${LV_STYLE[a.level].headline}</div>
+      <div class="headline">${results.length > 1 ? `${s.name}：` : ""}${headlineFor(a)}</div>
       <div class="timebrief">${timeBrief} · 距 ${Math.round(haversine(P.loc.lat, P.loc.lng, last.lat, last.lng))} km</div>
       ${s.active === false ? `<div class="slow-badge"><b>残余环流</b> —— 已停编，但残涡仍可能强降雨，雨的风险未结束</div>` : ""}
       ${a.slowMover ? `<div class="slow-badge"><b>停留型台风</b> —— 移速仅约 ${Math.round(a.moveKmh)} km/h，危险在雨不在风</div>` : ""}`;
@@ -430,14 +480,23 @@ const ImpactPanel = (() => {
       b.onclick = () => { P.focusTfid = b.dataset.tf; renderResult(); };
     });
 
-    // 时间线
+    // 时间线（区分已发生/未发生）
+    const nowT = Date.now();
+    const past = (p) => ptime(p) < nowT;
     const tl = [];
     if (a.inRange.length) {
-      tl.push([fmtTime(a.inRange[0].time), "风雨开始加强"]);
-      tl.push([fmtTime(a.closest.time), `最近约 ${Math.round(a.closest.dist)} km，影响最强`]);
-      if (a.endPoint) tl.push([fmtTime(a.endPoint.time), "风雨基本结束"]);
-      else if (a.stillInRangeAtEnd) tl.push(["", "<b>⚠️ 预报期内未移出影响范围</b>"]);
-      if (a.durationH) tl.push(["", `影响持续约 <b>${Math.round(a.durationH)} 小时</b>${a.slowMover ? "（停留型，明显偏长）" : ""}`]);
+      tl.push([fmtTime(a.inRange[0].time), past(a.inRange[0]) ? "风雨已开始" : "风雨开始加强"]);
+      tl.push([fmtTime(a.closest.time), past(a.closest)
+        ? `最强时段已过（最近约 ${Math.round(a.closest.dist)} km）`
+        : `最近约 ${Math.round(a.closest.dist)} km，影响最强`]);
+      if (a.endPoint) tl.push([fmtTime(a.endPoint.time), past(a.endPoint) ? "风雨已基本结束" : "预计风雨基本结束"]);
+      else if (a.stillInRangeAtEnd) tl.push(["", "<b>预报期内未移出影响范围</b>"]);
+      if (a.phase === "after" && a.postRain24 !== null && a.postRain24 >= 1) {
+        tl.push(["", a.postRain24 >= 30
+          ? `<b>未来24小时预计仍有约 ${a.postRain24} mm 降雨</b>——过境不等于结束（模式预报）`
+          : `<span class="muted">未来24小时残余降雨约 ${a.postRain24} mm（模式预报）</span>`]);
+      }
+      if (a.durationH && a.phase === "approach") tl.push(["", `影响持续约 <b>${Math.round(a.durationH)} 小时</b>${a.slowMover ? "（停留型，明显偏长）" : ""}`]);
     }
     tl.push(["", `预计过程雨量约 <b>${a.rain} mm</b><span class="muted">（${a.rainSrc === "模式预报" ? "数值模式预报" : "演示估算，模式数据加载中"}）</span>`]);
     if (a.peakRain) tl.push([fmtTime(a.peakRain.ts.replace("T", " ")), `本地雨强峰值（约 ${Math.round(a.peakRain.v)} mm/h，模式预报）`]);
@@ -488,8 +547,8 @@ const ImpactPanel = (() => {
     }
     document.querySelector("#d-analog > div").innerHTML = histHTML + analogHTML;
 
-    // 清单
-    const items = checklistItems(a.level);
+    // 清单（按阶段：备灾 / 避险 / 恢复期）
+    const items = phaseChecklist(a);
     document.querySelector("#d-checklist > div").innerHTML =
       items.map((item) => `
         <label class="check-row"><input type="checkbox"><span>${item}</span></label>`).join("") +
@@ -685,7 +744,7 @@ const ImpactPanel = (() => {
     /* ---- 结论 ---- */
     ctx.fillStyle = "#eeece6";
     ctx.font = F(800, 40);
-    wrapText(ctx, LV_STYLE[a.level].headline, 36, 540, W - 72, 52);
+    wrapText(ctx, headlineFor(a), 36, 540, W - 72, 52);
     ctx.fillStyle = "#aaa69f";
     ctx.font = F(400, 22);
     ctx.fillText(a.slowMover ? "停留型台风：移速慢、下得久，危险在雨不在风"
@@ -721,7 +780,7 @@ const ImpactPanel = (() => {
     ctx.fillStyle = "#eeece6";
     ctx.font = F(800, 26);
     ctx.fillText("现在该做的", 36, 796);
-    const items = checklistItems(a.level).slice(0, 3);
+    const items = phaseChecklist(a).slice(0, 3);
     items.forEach((item, i) => {
       const iy = 830 + i * 74;
       ctx.fillStyle = "#26241e";
@@ -776,7 +835,8 @@ const ImpactPanel = (() => {
   }
 
   function maxRadius(p) { return p && p.r7 ? Math.max(...p.r7) : null; }
-  function ptime(p) { return new Date(p.time.replace(" ", "T")).getTime(); }
+  /* 数据时间均为北京时间：显式按 +08:00 解析，海外浏览器也能与 Date.now() 正确比较 */
+  function ptime(p) { return new Date(p.time.replace(" ", "T") + "+08:00").getTime(); }
 
   function fmtTime(str) {
     if (!str) return "—";
