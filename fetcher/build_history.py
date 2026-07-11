@@ -22,6 +22,7 @@ REGIONS = ROOT / "docs" / "data" / "regions.json"
 OUT = ROOT / "docs" / "data" / "history.json"
 
 SINCE = 1949
+TOP_SINCE = 1980  # 「最强过境」榜单只取卫星时代（此前风速普遍高估）
 NEAR_KM = 100    # 直接冲击
 WIDE_KM = 300    # 显著影响
 CELL = 2.0       # 粗网格（度），用于快速筛选候选区县
@@ -79,10 +80,11 @@ def main():
             if dmin <= WIDE_KM:
                 a["c300"] += 1
                 a["months"][st["month"]] += 1
-                a["top"].append((st["maxwind"], label, st["season"], round(dmin)))
-                if len(a["top"]) > 8:
-                    a["top"].sort(reverse=True)
-                    del a["top"][4:]
+                if st["season"] >= TOP_SINCE:
+                    a["top"].append((st["maxwind"], label, st["season"], round(dmin)))
+                    if len(a["top"]) > 8:
+                        a["top"].sort(reverse=True)
+                        del a["top"][4:]
 
     with open(csv_path, newline="", encoding="utf-8", errors="replace") as f:
         reader = csv.reader(f)
