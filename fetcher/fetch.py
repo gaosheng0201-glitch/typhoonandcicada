@@ -17,7 +17,7 @@ import json
 import sys
 import time
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -107,6 +107,28 @@ def latest_forecasts(points):
     return seen
 
 
+RESIDUAL_HOURS = 48  # 停编后继续追踪残余环流的时长
+
+
+def residual_tfids(active_ids):
+    """已停编但最后实况在 48h 内的台风——残涡仍可能致灾，继续追。"""
+    found = []
+    # 数据时间为北京时间：两边都用无时区的“北京钟面”直接比较
+    now_bj = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=8)
+    for f in sorted(DATA_DIR.glob("typhoon_*.json")):
+        tfid = f.stem.split("_", 1)[1]
+        if tfid in active_ids:
+            continue
+        try:
+            track = json.loads(f.read_text(encoding="utf-8")).get("track") or []
+            last = datetime.strptime(track[-1]["time"], "%Y-%m-%d %H:%M:%S")
+        except (ValueError, KeyError, IndexError, json.JSONDecodeError):
+            continue
+        if now_bj - last <= timedelta(hours=RESIDUAL_HOURS):
+            found.append(tfid)
+    return found
+
+
 def fetch_once():
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     active = get_json(f"{BASE}/Api/TyhoonActivity") or []
@@ -114,8 +136,11 @@ def fetch_once():
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-    for item in active:
-        tfid = item["tfid"]
+    active_ids = {item["tfid"] for item in active}
+    targets = [(item["tfid"], "active") for item in active]
+    targets += [(tfid, "residual") for tfid in residual_tfids(active_ids)]
+
+    for tfid, status in targets:
         detail = get_json(f"{BASE}/Api/TyphoonInfo/{tfid}")
 
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -144,6 +169,7 @@ def fetch_once():
             "tfid": tfid,
             "name": out["name"],
             "enName": out["enName"],
+            "status": status,
             "strong": last.get("strong"),
             "power": last.get("power"),
             "lat": last.get("lat"),
@@ -151,7 +177,7 @@ def fetch_once():
             "lastTime": last.get("time"),
             "agencies": sorted(out["forecasts"].keys()),
         })
-        print(f"  {tfid} {out['name']} ({out['enName']}): "
+        print(f"  {tfid} {out['name']} ({out['enName']}) [{status}]: "
               f"{len(out['track'])} track pts, "
               f"forecasts from {', '.join(out['forecasts']) or 'none'}")
 

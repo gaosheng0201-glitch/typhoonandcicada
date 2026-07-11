@@ -41,6 +41,7 @@ archive/           每次抓取的原始快照，按台风编号分目录
 | 备用：中央气象台 | `typhoon.nmc.cn/weatherservice/typhoon/jsons/*` | JSONP，仅 BABJ 一家预报 |
 | 备用：日本气象厅 | `www.jma.go.jp/bosai/typhoon/data/*` | 官方 JSON，含预报圆概率半径 |
 | 历史最佳路径 | JMA RSMC / IBTrACS | 用于误差回算 |
+| 前期实测雨量 | Open-Meteo API | 免费、开 CORS，前端直连 |
 
 ## 历史台风对照库（docs/data/analogs.json）
 
@@ -78,9 +79,10 @@ sources    数据出处（年鉴/公开报道）
       （<https://developers.google.com/weathernext/guides/access-forecast>；
       注意 <48h 实时数据的实验性条款，商用前需确认）
 - [ ] 面 2：输入位置 → 逐时风雨时间线（依赖 WeatherNext 格点数据）
-- [ ] **残涡不停追**：台风停编 ≠ 追踪结束，残余环流仍有强降雨预报时继续给影响卡
-      （郑州 7·20、广西美莎克型灾害多发生在公众注意力散场之后）
-- [ ] **前期降雨上下文**：接过去 7–14 天实况雨量，提示"这场雨将落在已湿透的土地上"
+- [x] 残涡不停追：停编 ≤48h 且有近期实况的台风继续追踪并标注「残余环流」，
+      影响卡提示"风的威胁结束了，雨的风险还没有"（郑州 7·20 型灾害的教训）
+- [x] 前期降雨上下文：Open-Meteo 过去 14 天实测累计，≥150mm 提示
+      "这场雨将落在已经湿透的土地上"（菲特/利奇马型灾害的共同前提）
 - [ ] **双情景卡**：机构预报分歧大时给两个分支（快速过境 vs 停滞），分歧本身就是信号
 - [ ] 官方预警信号接入：等级判断挂靠官方发布，应用只做转译
 - [ ] 部署：fetcher 挂 cron 定时更新 docs/data/ 并 push（Pages 自动跟随）

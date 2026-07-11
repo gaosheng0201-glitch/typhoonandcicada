@@ -77,14 +77,22 @@ const TyphoonData = (() => {
   async function loadIndex() {
     try {
       const list = await fetchJSON(`${BASE}/Api/TyhoonActivity`);
-      return {
-        live: true,
-        typhoons: (list || []).map((t) => ({
-          tfid: t.tfid, name: t.name, enName: t.enname,
-          strong: t.strong, power: t.power,
-          lastTime: t.timeformate || t.time,
-        })),
-      };
+      const typhoons = (list || []).map((t) => ({
+        tfid: t.tfid, name: t.name, enName: t.enname,
+        status: "active",
+        strong: t.strong, power: t.power,
+        lastTime: t.timeformate || t.time,
+      }));
+      // 残涡不停追：快照里标记为 residual 的（停编 ≤48h）合并进来继续显示
+      try {
+        const snap = await fetchJSON(`data/index.json?t=${Date.now()}`);
+        for (const t of snap.typhoons || []) {
+          if (t.status === "residual" && !typhoons.some((x) => x.tfid === t.tfid)) {
+            typhoons.push(t);
+          }
+        }
+      } catch (e) { /* 快照不可用时忽略 */ }
+      return { live: true, typhoons };
     } catch (e) {
       const idx = await fetchJSON(`data/index.json?t=${Date.now()}`);
       return { live: false, ...idx };

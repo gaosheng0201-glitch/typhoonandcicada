@@ -260,9 +260,11 @@ function renderStormList() {
   for (const t of state.index.typhoons) {
     const div = document.createElement("div");
     div.className = "storm-item" + (t.tfid === state.selected ? " selected" : "");
+    const residual = t.status === "residual"
+      ? `<span class="residual-tag">残余环流</span> ` : "";
     div.innerHTML = `
       <div class="name">${t.name} ${t.enName} <small>#${t.tfid}</small></div>
-      <div class="sub">${t.strong || ""}${t.power ? ` ${t.power}级` : ""} · ${t.lastTime || ""}</div>`;
+      <div class="sub">${residual}${t.strong || ""}${t.power ? ` ${t.power}级` : ""} · ${t.lastTime || ""}</div>`;
     div.onclick = () => loadStorm(t.tfid, true);
     el.appendChild(div);
   }

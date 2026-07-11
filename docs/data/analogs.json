@@ -137,19 +137,19 @@
       "eventId": "202305-doksuri-wenzhou",
       "typhoon": { "tfid": "202305", "name": "杜苏芮", "enName": "DOKSURI" },
       "region": { "province": "浙江", "city": "温州" },
-      "hazard": { "rainTotalMm": 860, "rainDurationH": 96, "peakPower": 15, "landfall": false, "approx": true },
+      "hazard": { "rainTotalMm": 821, "rainDurationH": 120, "peakPower": 15, "landfall": false, "approx": true },
       "impact": {
         "level": 4,
-        "flood": "浙南局地出现大暴雨，山洪、地质灾害和城市内涝风险突出",
-        "power": "局部基础设施受强风雨影响",
+        "flood": "苍南西部山区出现极端强降雨，全市台风影响期间发生多起地质灾害",
+        "power": "局部基础设施受持续强降雨影响",
         "water": "未见大范围停水的官方统计",
-        "evacuation": "危险区域人员按官方部署提前转移",
-        "note": "7月26日至30日，温州、丽水等地局地累计雨量达400至861毫米"
+        "evacuation": "苍南县紧急转移安置5527人",
+        "note": "苍南岑溪天井站最大过程雨量820.7毫米，强降雨持续5天"
       },
-      "narrative": "2023年杜苏芮登陆福建前后，浙南受本体环流影响，温州等地局地过程雨量接近860毫米——台风不在本地登陆，山区仍可能遭遇极端降雨。",
+      "narrative": "2023年杜苏芮登陆福建前后，温州苍南连续5天强降雨，山区单站过程雨量约821毫米并转移5527人——台风不在本地登陆，山区仍可能遭遇极端降雨。",
       "sources": [
-        "中国气象局｜2023年全国生态气象公报：https://www.cma.gov.cn/zfxxgk/gknr/qxbg/202411/W020241106509092473623.pdf",
-        "应急管理部｜2023年全国自然灾害基本情况：https://www.mem.gov.cn/xw/yjglbgzdt/202401/t20240120_475697.shtml"
+        "苍南县地方志研究室｜苍南年鉴2024：https://zjjcmspublic.oss-cn-hangzhou-zwynet-d01-a.internet.cloud.zj.gov.cn/jcms_files/jcms1/web1831/site/attach/0/394bc1251beb4ba2a98f3b1e5826247c.pdf",
+        "温州市水利局｜温州市水资源公报2023：https://zjjcmspublic.oss-cn-hangzhou-zwynet-d01-a.internet.cloud.zj.gov.cn/jcms_files/jcms1/web2514/site/attach/0/48e6519e963d47c5bc7660988e549575.pdf"
       ]
     },
     {

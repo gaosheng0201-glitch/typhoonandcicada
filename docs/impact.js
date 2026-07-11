@@ -24,7 +24,29 @@ const CHECKLISTS = {
   4: ["随时听从社区/应急部门转移安排", "贵重物品移至高层", "保持手机畅通，告知家人去向", "低洼、山边、危房住户提前投亲靠友"],
 };
 
-const state = { storm: null, analogs: null, city: "温州" };
+const state = { storm: null, analogs: null, city: "温州", antecedent: {} };
+
+/* 前期降雨：过去 14 天实测累计（Open-Meteo，免费开 CORS）。
+   同样的雨落在湿透的土地上更易致灾——菲特/利奇马型灾害的共同前提。 */
+const WET_SOIL_MM = 150;
+
+async function loadAntecedent(city) {
+  if (state.antecedent[city] !== undefined) return;
+  state.antecedent[city] = null; // 占位防止并发重复请求
+  try {
+    const c = CITIES[city];
+    const d = await fetchJSON(
+      `https://api.open-meteo.com/v1/forecast?latitude=${c.lat}&longitude=${c.lng}` +
+      `&daily=precipitation_sum&past_days=14&forecast_days=1&timezone=Asia%2FShanghai`);
+    const sum = (d.daily.precipitation_sum || [])
+      .filter((x) => x != null).reduce((a, b) => a + b, 0);
+    state.antecedent[city] = Math.round(sum);
+  } catch (e) {
+    state.antecedent[city] = undefined; // 失败允许下次重试
+    return;
+  }
+  if (city === state.city) render();
+}
 
 init();
 
@@ -44,8 +66,9 @@ async function init() {
   sel.innerHTML = Object.keys(CITIES)
     .map((c) => `<option ${c === state.city ? "selected" : ""}>${c}</option>`)
     .join("");
-  sel.onchange = () => { state.city = sel.value; render(); };
+  sel.onchange = () => { state.city = sel.value; loadAntecedent(state.city); render(); };
   bindShare();
+  loadAntecedent(state.city);
   render();
 }
 
@@ -138,6 +161,8 @@ function render() {
     <div class="big">${s.name} ${s.enName}（${last.strong} ${last.power}级）</div>
     现距${state.city}约 <b>${Math.round(haversine(CITIES[state.city].lat, CITIES[state.city].lng, last.lat, last.lng))} km</b>，
     正以 ${last.moveSpeed} km/h 向${fmtDir(last.moveDir)}方向移动
+    ${s.active === false ? `<div class="slow-badge">⚠️ 该台风已停止编号，但<b>残余环流仍可能带来强降雨</b>——
+      风的威胁结束了，雨的风险还没有。历史上多次重大雨灾发生在台风「结束」之后</div>` : ""}
     ${a.slowMover ? `<div class="slow-badge">🐌 停留型台风：预报移速仅约 ${Math.round(a.moveKmh)} km/h，
       在一地停留久、累计雨量大——<b>这种台风的危险在雨不在风</b></div>` : ""}
     <div class="muted">实况时间 ${last.time} · 数据：温州台风网${s.live ? "（🟢 实时）" : "（快照）"}</div>`;
@@ -159,6 +184,12 @@ function render() {
     tl.push(["", `台风预计最近距离约 ${Math.round(a.closest.dist)} km（${fmtTime(a.closest.time)}），本地以外围影响为主`]);
   }
   tl.push(["", `<span class="muted">预计过程雨量约 ${a.rain} mm（演示估算${a.slowMover ? "，含停留时长加成" : ""}）</span>`]);
+  const ante = state.antecedent[state.city];
+  if (ante != null) {
+    tl.push(["", ante >= WET_SOIL_MM
+      ? `🌧 过去两周本地已降约 <b>${ante} mm</b>——<b>这场雨将落在已经湿透的土地上</b>，同样雨量更易致灾，建议按上一档准备`
+      : `<span class="muted">过去两周本地已降约 ${ante} mm（前期偏干，土壤有一定吸纳余量）</span>`]);
+  }
   document.getElementById("timeline").innerHTML =
     `<h3>时间线 · ${state.city}</h3>` +
     tl.map(([t, txt]) => `<div class="tl-row">${t ? `<span class="t">${t}</span>` : ""}<span>${txt}</span></div>`).join("");
