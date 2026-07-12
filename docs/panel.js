@@ -101,7 +101,12 @@ const ImpactPanel = (() => {
       const cur = P.checklists.personas.find((p) => p.id === P.persona);
       if (!cur || !cur.situations || !cur.situations.length) step = "result";
     }
-    if (step === "result") { P.setupDone = true; persist(); }
+    if (step === "result") {
+      const first = !P.setupDone;
+      P.setupDone = true; persist();
+      // 首次完成设置：此刻起才在地图上标出「你」
+      if (first && window.onUserLoc) window.onUserLoc(P.loc.lat, P.loc.lng, locLabel());
+    }
     P.step = step;
     showStep(step);
   }
@@ -187,8 +192,8 @@ const ImpactPanel = (() => {
     loadForecast();
     renderBar();
     renderResult();
-    // 通知地图更新「你」的位置标记（app.js 定义 onUserLoc）
-    if (window.onUserLoc) window.onUserLoc(P.loc.lat, P.loc.lng, locLabel());
+    // 通知地图更新「你」的位置标记——仅在用户真正设过位置后，避免首访者看到默认温州被标「你」
+    if (window.onUserLoc && P.setupDone) window.onUserLoc(P.loc.lat, P.loc.lng, locLabel());
   }
 
   function useMyLocation() {
