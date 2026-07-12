@@ -229,7 +229,10 @@ const ImpactPanel = (() => {
       `<button class="chip ${p.id === P.persona ? "on" : ""}" data-p="${p.id}">${p.name}</button>`
     ).join("");
     el.querySelectorAll(".chip").forEach((b) => {
-      b.onclick = () => { P.persona = b.dataset.p; P.situations.clear(); persist(); buildPersonaChips(); };
+      b.onclick = () => {
+        P.persona = b.dataset.p; P.situations.clear(); persist(); buildPersonaChips();
+        if (P.step === "result") renderResult(); // 结果页改人群，清单实时跟着换
+      };
     });
     buildSituationRow();
   }
@@ -244,7 +247,10 @@ const ImpactPanel = (() => {
       ).join("")
       : `<span class="sit-none">该人群无需额外选择，直接查看结果即可</span>`;
     sitEl.querySelectorAll("input").forEach((i) => {
-      i.onchange = () => { i.checked ? P.situations.add(i.dataset.s) : P.situations.delete(i.dataset.s); persist(); };
+      i.onchange = () => {
+        i.checked ? P.situations.add(i.dataset.s) : P.situations.delete(i.dataset.s); persist();
+        if (P.step === "result") renderResult();
+      };
     });
   }
 
@@ -260,28 +266,34 @@ const ImpactPanel = (() => {
      进行中=避险，过境后=恢复期（含人群补充） */
   function phaseChecklist(a) {
     const ph = P.checklists.phases || {};
-    // 减弱期：峰值已过、风雨在退——用过渡清单（避险→恢复的中间态），不再是满血避险
+    const ex = (k) => (ph[k] || {})[P.persona] || []; // 该人群在某阶段的专属补充
+    // 减弱期：峰值已过、风雨在退——过渡清单（避险→恢复的中间态）+ 人群专属
     if (a.phase === "during" && a.easing && ph.easing) {
-      return ph.easing.concat((ph.after_extra || {})[P.persona] || []);
+      return ph.easing.concat(ex("easing_extra"));
     }
-    if (a.phase === "during" && ph.during) return ph.during;
+    if (a.phase === "during" && ph.during) return ph.during.concat(ex("during_extra"));
     if (a.phase === "after") {
-      // 按本地「实际」影响强度分档：擦肩而过给轻恢复，正面重创才给全套
-      const base = (localImpactHeavy(a) ? ph.after : (ph.after_light || ph.after)) || [];
-      return base.concat((ph.after_extra || {})[P.persona] || []);
+      // 按本地「实际」影响强度分 3 档：外围掠过 / 明显影响 / 正面重创
+      const tier = a.postRain24 >= 30 ? 3 : localImpactTier(a);
+      const base = (tier >= 3 ? ph.after : tier === 2 ? (ph.after_mid || ph.after)
+        : (ph.after_light || ph.after)) || [];
+      return base.concat(ex("after_extra"));
     }
     if (a.phase === "approach" && !a.win && a.closing && ph.watch) {
-      return ph.watch.concat((ph.watch_extra || {})[P.persona] || []);
+      return ph.watch.concat(ex("watch_extra"));
     }
     return checklistItems(a.level);
   }
 
-  /* 本地实际影响是否达到「重档」：按真实落地的雨量/阵风/后续降雨判定，
-     擦肩而过（外围影响）走轻档恢复，别拿山洪滑坡吓一个没被淹的城市 */
-  function localImpactHeavy(a) {
-    const gustPk = a.peakGust ? a.peakGust.v : 0;      // km/h
-    return (a.rain || 0) >= 100 || gustPk >= 88 /* ~10级 */ ||
-      (a.postRain24 || 0) >= 30 || a.level >= 4;
+  /* 本地实际影响分档（1 外围掠过 / 2 明显影响 / 3 正面重创），
+     按真实落地的过程雨量、阵风峰值、后续降雨判定——不拿山洪滑坡吓没被淹的城市，
+     也不把重创说成外围掠过。三档让 2 档的模糊边界清晰化。 */
+  function localImpactTier(a) {
+    const g = a.peakGust ? a.peakGust.v : 0;   // km/h
+    const r = a.rain || 0, pr = a.postRain24 || 0;
+    if (r >= 120 || g >= 103 /* ~11级 */ || pr >= 40) return 3;
+    if (r >= 50 || g >= 75 /* ~9级 */ || pr >= 15) return 2;
+    return 1;
   }
 
   /* ---------- 评估 ---------- */
@@ -464,7 +476,9 @@ const ImpactPanel = (() => {
     if (a.phase === "after") {
       if (a.postRain24 !== null && a.postRain24 >= 30)
         return "台风已过境，但雨还没停——警惕滞后内涝与山洪";
-      return localImpactHeavy(a) ? "台风已过境，恢复期注意安全"
+      const tier = localImpactTier(a);
+      return tier >= 3 ? "台风已过境，恢复期注意安全"
+        : tier === 2 ? "台风已过境，本地受到明显影响，注意善后"
         : "台风已过境，本地以外围影响为主，可逐步恢复";
     }
     if (!a.win && a.closing) return "台风还远，是否影响你尚无法判断";
