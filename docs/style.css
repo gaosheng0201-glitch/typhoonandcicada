@@ -253,18 +253,16 @@ button, select, input { font-family: var(--serif); }
 }
 .slow-badge b { color: var(--ink); }
 
-/* 海浪危险（沿海/海岛）：独立于风雨的一条危险轴，即使判「不经过」也醒目 */
+/* 海浪危险（沿海/海岛）：独立于风雨的一条危险轴，即使判「不经过」也报。
+   与 .slow-badge 同一克制风格：细左边线 + 素色正文，无底色、无 emoji。 */
 .wave-warn {
-  margin: 10px 0 2px;
-  padding: 9px 12px;
-  border-left: 3px solid var(--accent);
-  border-radius: 6px;
-  background: rgba(90, 130, 170, 0.12);
-  font-size: 13px;
-  line-height: 1.6;
+  margin: 10px 0 0;
+  padding: 8px 0 8px 12px;
+  border-left: 2px solid var(--accent);
+  color: var(--ink-2);
+  font-size: 12.5px;
+  line-height: 1.7;
 }
-.wave-warn b { display: block; margin-bottom: 2px; font-size: 14px; letter-spacing: 0.02em; }
-.wave-warn span { color: var(--ink-2); }
 
 #dock-body details {
   border-top: 1px solid var(--hairline);

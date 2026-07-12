@@ -808,9 +808,7 @@ const ImpactPanel = (() => {
       }[wave.tier];
       const colorNote = wave.peak >= 14 ? "近海海浪红色级" : wave.peak >= 9 ? "近海海浪橙色级"
         : wave.peak >= 6 ? "近海达海浪黄色级" : "";
-      waveBanner = `<div class="wave-warn" style="border-left-color:${wc}">
-        <b style="color:${wc}">🌊 外海约 ${wave.peak} m ${wave.name}${colorNote ? "（" + colorNote + "）" : ""}</b>
-        <span>${act}</span></div>`;
+      waveBanner = `<div class="wave-warn" style="border-left-color:${wc}"><b style="color:${wc}">外海约 ${wave.peak} m ${wave.name}${colorNote ? "（" + colorNote + "）" : ""}</b>：${act}</div>`;
     }
     box.innerHTML = `
       <div class="lv-badge lv-${globalLevel}"><b>${lv.name}</b>风险参考 · ${locLabel()}</div>
