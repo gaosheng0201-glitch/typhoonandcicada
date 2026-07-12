@@ -817,9 +817,9 @@ const ImpactPanel = (() => {
 
     // 清单（按阶段：备灾 / 避险 / 恢复期）
     const items = phaseChecklist(a);
-    // 财产处置风险提示：仅在登陆前、清单真出现「折价抢收/起捕/出栏」这类不可逆
-    // 花钱决策时，附一小句在「非官方预警」后——预报会变，别单凭它低价处理家当
-    const rn = (P.checklists.risk_note || {})[P.persona];
+    // 财产处置提示：仅在登陆前、清单真出现「折价抢收/起捕/出栏」这类不可逆
+    // 花钱决策时，附一小句通用提示在「非官方预警」后——数据仅供参考，请自行判断
+    const rn = P.checklists.risk_note;
     const preImpact = a.phase !== "during" && a.phase !== "after";
     const hasDisposal = /抢收|起捕|出栏|折价|抛售/.test(items.join(""));
     const riskHTML = (rn && preImpact && hasDisposal)
