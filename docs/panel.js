@@ -304,12 +304,12 @@ const ImpactPanel = (() => {
 
   /* 本地实际影响分档（1 外围掠过·轻微 / 2 明显影响 / 3 正面重创）。
      锚在国标：风臂用台风预警信号风级（阵风10级=黄「较重」→2档，12级=橙「严重」→3档）；
-     雨臂用降水量等级（大雨25→2档，大暴雨100→3档），并按「动态临界雨量」随土壤饱和度下调
+     雨臂用降水量等级/暴雨预警（暴雨50→2档，大暴雨100→3档），并按「动态临界雨量」随土壤饱和度下调
      ——土越湿门槛越低（前期影响雨量法）。残余降雨只有与台风相关时才计入，避免普通梅雨顶档。 */
   function localImpactTier(a) {
     const g = a.peakGust ? a.peakGust.v : 0;         // 峰值阵风 km/h
     const w = a.soilW || 0;                          // 土壤饱和度 0..1
-    const thr2 = 25 * (1 - SOIL_DROP * w);           // 明显影响：大雨基准，湿土下调
+    const thr2 = 50 * (1 - SOIL_DROP * w);           // 明显影响：暴雨基准，湿土下调
     const thr3 = 100 * (1 - SOIL_DROP * w);          // 正面重创：大暴雨基准，湿土下调
     // 过程雨量 与「相关的」未来24h残余雨 取大者
     const r = Math.max(a.rain || 0, a.relevant ? (a.postRain24 || 0) : 0);
@@ -325,7 +325,16 @@ const ImpactPanel = (() => {
     const path = s.track.slice(-4).concat(fc ? fc.points : [])
       .map((p) => ({ ...p, dist: haversine(P.loc.lat, P.loc.lng, p.lat, p.lng) }));
 
-    const closest = path.reduce((a, b) => (b.dist < a.dist ? b : a));
+    const fwdClosest = path.reduce((a, b) => (b.dist < a.dist ? b : a));
+    // 全轨迹历史最近点：只看「近4实况+预报」会漏掉几小时前已从你身边掠过、现正远离的城市
+    // ——温州（登陆点）、杭州这类，台风北上后近4点已在数百公里外，会被误判「路径不经过」。
+    let histClosest = fwdClosest;
+    for (let i = 0; i < s.track.length; i++) {
+      const hd = haversine(P.loc.lat, P.loc.lng, s.track[i].lat, s.track[i].lng);
+      if (hd < histClosest.dist) histClosest = { ...s.track[i], dist: hd };
+    }
+    // 历史最近点更近且已成过去 = 台风已从你身边过去，用它作真实最近点（锚定风雨窗/距离/阶段）
+    const closest = (histClosest !== fwdClosest && ptime(histClosest) < Date.now()) ? histClosest : fwdClosest;
     // 当前 7 级风圈：最近 5 个实况点内的真实半径优先；官方停发（系统减弱）时
     // 按当前强度估算——与地图风圈同一逻辑，分享卡也用它，不再出现陈旧大圈
     let galeR = null, galeREst = false;
@@ -435,7 +444,9 @@ const ImpactPanel = (() => {
     const nowT = Date.now();
     let phase = "approach";
     if (win && nowT >= win.startT) {
-      phase = (win.open || nowT <= win.endT) ? "during" : "after";
+      // 「已过境」还要求台风最近点确已成过去——否则模式雨窗中途的空档会把「仍在最近点」误判成过境
+      const centerPassed = ptime(closest) < nowT;
+      phase = (win.open || nowT <= win.endT || !centerPassed) ? "during" : "after";
     }
     if (win) durationH = (win.endT - win.startT) / 3.6e6;
 
