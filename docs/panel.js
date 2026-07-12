@@ -13,7 +13,7 @@ const ImpactPanel = (() => {
   };
   const LV_STYLE = {
     1: { color: "#aaa69f", headline: "预报路径不经过你所在区域", sub: "不必被「超强台风」的标题吓到" },
-    2: { color: "#c9a961", headline: "外围风雨会来，备点吃喝更安心", sub: "影响有限，做基础准备即可" },
+    2: { color: "#c9a961", headline: "风雨会来，备点吃喝更安心", sub: "影响有限，做基础准备即可" },
     3: { color: "#ea8640", headline: "影响明显，今天完成防台准备", sub: "重点防内涝和停电" },
     4: { color: "#d0442c", headline: "可能严重受灾，紧盯官方通知", sub: "涉及转移请听从政府安排" },
   };
@@ -490,9 +490,11 @@ const ImpactPanel = (() => {
       const tier = localImpactTier(a);
       return tier >= 3 ? "台风已过境，恢复期注意安全"
         : tier === 2 ? "台风已过境，本地受到明显影响，注意善后"
-        : "台风已过境，本地以外围影响为主，可逐步恢复";
+        : "台风已过境，本地以外围影响为主";
     }
     if (!a.win && a.closing) return "台风还远，是否影响你尚无法判断";
+    // 等级1但确有风雨窗口（弱系统近距离经过）：不能说"路径不经过你"
+    if (a.level === 1 && a.win) return "会有些风雨，但影响有限，留意即可";
     return LV_STYLE[a.level].headline;
   }
 
