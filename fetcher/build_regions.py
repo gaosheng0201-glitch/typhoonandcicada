@@ -25,7 +25,7 @@ DETAILED = {
 
 def get(adcode):
     url = f"{BASE}/{adcode}_full.json"
-    req = urllib.request.Request(url, headers={"User-Agent": "typhoon-impact-build"})
+    req = urllib.request.Request(url, headers={"User-Agent": "typhoonandcicada-build"})
     with urllib.request.urlopen(req, timeout=30) as resp:
         return json.loads(resp.read().decode("utf-8"))
 

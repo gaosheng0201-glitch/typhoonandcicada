@@ -34,7 +34,7 @@ TILES = [
 
 def fetch(bbox):
     url = f"https://aviationweather.gov/api/data/metar?format=json&bbox={bbox}"
-    req = urllib.request.Request(url, headers={"User-Agent": "typhoon-impact/1.0 (public-good)"})
+    req = urllib.request.Request(url, headers={"User-Agent": "typhoonandcicada/1.0 (public-good)"})
     with urllib.request.urlopen(req, timeout=40) as r:
         return json.loads(r.read().decode("utf-8"))
 

@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2026 日成Risen (Risen) and Typhoon Impact contributors
+Copyright (c) 2026 日成Risen (Risen) and Typhoon & Cicada contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,5 +22,5 @@ SOFTWARE.
 
 ---
 
-数据说明：web/data/analogs.json（历史台风影响对照库）以 CC BY 4.0 许可发布，
+数据说明：docs/data/analogs.json（历史台风灾情对照库）以 CC BY 4.0 许可发布，
 使用时请注明出处。其中数值为依据《中国气象灾害年鉴》等公开资料整理的约数。

@@ -46,7 +46,7 @@ def hav(a, b, c, d):
 
 
 def get(url):
-    req = urllib.request.Request(url, headers={"User-Agent": "typhoon-impact/1.0 (public-good research)"})
+    req = urllib.request.Request(url, headers={"User-Agent": "typhoonandcicada/1.0 (public-good research)"})
     with urllib.request.urlopen(req, timeout=45) as r:
         return r.read().decode("utf-8")
 

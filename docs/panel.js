@@ -954,7 +954,7 @@ const ImpactPanel = (() => {
     // 顶栏
     ctx.fillStyle = "#76726a";
     ctx.font = F(600, 21);
-    ctx.fillText("台风影响 · TYPHOON IMPACT", 36, 52);
+    ctx.fillText("台风与蝉 · TYPHOON & CICADA", 36, 52);
     ctx.textAlign = "right";
     ctx.fillText(last.time.slice(5, 16), W - 36, 52);
     ctx.textAlign = "left";
@@ -1122,7 +1122,7 @@ const ImpactPanel = (() => {
     ctx.fillStyle = "#76726a";
     ctx.font = F(400, 18);
     ctx.textAlign = "center";
-    ctx.fillText("非官方预警 · 以气象部门发布为准 · 公益项目 by 日成Risen · typhoon-impact", W / 2, H - 22);
+    ctx.fillText("非官方预警 · 以气象部门发布为准 · 公益项目 by 日成Risen · typhoonandcicada", W / 2, H - 22);
     ctx.textAlign = "left";
   }
 
