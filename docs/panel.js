@@ -54,6 +54,7 @@ const ImpactPanel = (() => {
     });
     loadAntecedent();
     loadForecast();
+    loadMetar();
     if (P.setupDone) P.step = "result";
     showStep(P.step);
     renderBar();
@@ -61,7 +62,7 @@ const ImpactPanel = (() => {
 
   function updateAll(storms) {
     P.storms = (storms || []).filter((s) => s && s.track && s.track.length);
-    if (P.regions) loadForecast(); // 15 分钟 TTL，保持「此刻」新鲜
+    if (P.regions) { loadForecast(); loadMetar(); } // 保持「此刻」新鲜
     renderBar();
     renderResult();
   }
@@ -383,9 +384,14 @@ const ImpactPanel = (() => {
     }
     if (win) durationH = (win.endT - win.startT) / 3.6e6;
 
-    // 此刻锚点：优先 15 分钟级 current，整点槽仅回退
+    // 此刻锚点：机场 METAR 实测优先（真实观测，模式在减弱尾段会高报约一个风级），
+    // 无就近站时回退 Open-Meteo：15 分钟级 current 优先，整点槽再回退
     let nowWx = null, easing = false;
-    if (fdata) {
+    const obs = nearestObs(P.loc.lat, P.loc.lng);
+    if (obs) {
+      nowWx = { rain: obs.rainMm, gust: obs.gustKmh, obs: true,
+                rainDesc: obs.rainDesc, distKm: obs.distKm, ageMin: obs.ageMin };
+    } else if (fdata) {
       if (fdata.cur && fdata.cur.rain != null) {
         nowWx = { rain: fdata.cur.rain, gust: fdata.cur.gust || 0 };
       } else {
@@ -393,10 +399,14 @@ const ImpactPanel = (() => {
         for (let i = 0; i < fdata.t.length; i++) if (fdata.t[i] <= nowT) iNow = i;
         if (iNow >= 0) nowWx = { rain: fdata.p[iNow] || 0, gust: fdata.g[iNow] || 0 };
       }
-      if (nowWx) {
-        easing = phase === "during" && ptime(closest) < nowT &&
-          nowWx.rain < 1.5 && nowWx.gust < 62;
-      }
+    }
+    if (nowWx) {
+      // 减弱期：最近点已过（中心在远离）+ 此刻明显弱于本次峰值 或 已降到警戒线下。
+      // 不再单纯卡「阵风<62」——台风刚擦过但仍有 8 级时，真相是「已过峰值正在减弱」而非「进行中」
+      const pastClosest = ptime(closest) < nowT;
+      const gPeak = peakGust ? peakGust.v : 0;
+      easing = phase === "during" && pastClosest &&
+        ((nowWx.rain < 1.5 && nowWx.gust < 62) || (gPeak > 0 && nowWx.gust <= gPeak * 0.85));
     }
     let postRain24 = null;
     if (fdata) {
@@ -426,6 +436,8 @@ const ImpactPanel = (() => {
 
   /* 此刻天气的人话描述（小时雨强口径：<2.5 小雨 / <8 中雨 / <16 大雨 / ≥16 暴雨强度） */
   function nowWxDesc(w) {
+    // 实测（METAR）：观测不给逐时雨量，用观测降水现象的定性描述，不编造 mm/h 数字
+    if (w.obs) return `${w.rainDesc} · 阵风约${gustLevel(w.gust)}级`;
     const r = w.rain < 0.1 ? "基本无雨" : w.rain < 2.5 ? "小雨" : w.rain < 8 ? "中雨"
       : w.rain < 16 ? "大雨" : "暴雨强度";
     const num = w.rain >= 0.1 ? `（约 ${Math.round(w.rain * 10) / 10} mm/h）` : "";
@@ -520,6 +532,55 @@ const ImpactPanel = (() => {
     } catch (e) { delete P.forecast[key]; }
   }
 
+  /* 就近机场 METAR 实测「此刻」：55km 内、报文 150 分钟内才用，否则回退模式 */
+  function nearestObs(lat, lng) {
+    if (!P.metar || !P.metar.stations || !P.metar.stations.length) return null;
+    let best = null, bd = Infinity;
+    for (const st of P.metar.stations) {
+      if (st.la == null || st.lo == null) continue;
+      const d = haversine(lat, lng, st.la, st.lo);
+      if (d < bd) { bd = d; best = st; }
+    }
+    if (!best || bd > 55) return null;
+    const age = (Date.now() - new Date(best.t).getTime()) / 60000;
+    if (!(age >= 0) || age > 150) return null;
+    const gustKt = best.wg != null ? best.wg : (best.ws != null ? best.ws : 0);
+    const rainDesc = metarRainDesc(best.wx);
+    return {
+      gustKmh: Math.round(gustKt * 1.852),   // 节 → km/h
+      rainDesc, rainMm: metarRainMm(rainDesc),
+      distKm: Math.round(bd), ageMin: Math.round(age),
+    };
+  }
+
+  /* METAR 天气现象串 → 中文定性降水描述 */
+  function metarRainDesc(wx) {
+    if (!wx) return "无雨";
+    const s = wx.toUpperCase();
+    if (!/(RA|DZ|SN|SG|GR|GS|TS|SH|PL|UP)/.test(s)) return "无雨";
+    const heavy = s.includes("+"), light = s.includes("-"), thunder = s.includes("TS");
+    if (/SN|SG/.test(s)) return heavy ? "大雪" : light ? "小雪" : "中雪";
+    if (thunder) return "雷阵雨";
+    return heavy ? "大雨" : light ? (s.includes("DZ") ? "毛毛雨" : "小雨") : "中雨";
+  }
+  /* 给档位/减弱判据用的名义雨强（观测不含 mm/h，取量级代表值） */
+  function metarRainMm(desc) {
+    if (/大|暴/.test(desc)) return 12;
+    if (/中|雷/.test(desc)) return 4;
+    if (/小|毛/.test(desc)) return 0.5;
+    return 0;
+  }
+
+  async function loadMetar() {
+    if (P.metar && Date.now() - P.metar.at < 10 * 60e3) return; // 10 分钟内不重复拉
+    try {
+      const d = await fetchJSON2(`data/metar.json?t=${Date.now()}`);
+      d.at = Date.now();
+      P.metar = d;
+      if (P.step === "result") renderResult(); // 实测到手后刷新「此刻」
+    } catch (e) { /* 快照缺失时静默回退模式 */ }
+  }
+
   /* 阵风 km/h → 蒲福风级（近似） */
   function gustLevel(kmh) {
     const ms = kmh / 3.6;
@@ -592,7 +653,7 @@ const ImpactPanel = (() => {
       ${multiRow}
       <div class="headline">${results.length > 1 ? `${s.name}：` : ""}${headlineFor(a)}</div>
       <div class="timebrief">${timeBrief} · 距 ${Math.round(haversine(P.loc.lat, P.loc.lng, last.lat, last.lng))} km</div>
-      ${a.nowWx ? `<div class="timebrief">此刻本地：${nowWxDesc(a.nowWx)}<span class="muted">（模式实况，以体感为准）</span></div>` : ""}
+      ${a.nowWx ? `<div class="timebrief">此刻本地：${nowWxDesc(a.nowWx)}<span class="muted">（${a.nowWx.obs ? `最近气象站 ${a.nowWx.distKm}km · ${a.nowWx.ageMin} 分钟前实测` : "模式实况，以体感为准"}）</span></div>` : ""}
       ${s.active === false ? `<div class="slow-badge"><b>残余环流</b> —— 已停编，但残涡仍可能强降雨，雨的风险未结束</div>` : ""}
       ${a.slowMover ? `<div class="slow-badge"><b>停留型台风</b> —— 移速仅约 ${Math.round(a.moveKmh)} km/h，危险在雨不在风</div>` : ""}`;
     box.querySelectorAll(".storm-chip").forEach((b) => {
