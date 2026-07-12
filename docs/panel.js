@@ -311,7 +311,7 @@ const ImpactPanel = (() => {
       const r = maxRadius(s.track[i]);
       if (r) { galeR = r; break; }
     }
-    const inRange = path.filter((p) => p.dist < galeR);
+    const inRange = path.filter((p) => p.dist < warnRadius(p));
 
     const pts = fc ? fc.points : [];
     let moveKmh = null;
@@ -329,8 +329,8 @@ const ImpactPanel = (() => {
     if (inRange.length) {
       durationH = (ptime(inRange[inRange.length - 1]) - ptime(inRange[0])) / 3.6e6;
       const after = path.filter((p) => ptime(p) > ptime(closest));
-      endPoint = after.find((p) => p.dist >= galeR) || null;
-      stillInRangeAtEnd = !endPoint && path[path.length - 1].dist < galeR;
+      endPoint = after.find((p) => p.dist >= warnRadius(p)) || null;
+      stillInRangeAtEnd = !endPoint && path[path.length - 1].dist < warnRadius(path[path.length - 1]);
     }
 
     // 本地天气窗口：直接用数值模式逐小时序列判定「风雨何时开始/结束」。
@@ -344,7 +344,7 @@ const ImpactPanel = (() => {
               src: "几何", open: !endPoint && stillInRangeAtEnd };
     }
     // 相关性门槛：台风最近距离远超风圈时，本地降雨与台风无关，不建时间窗、不归因
-    const relevant = inRange.length > 0 || closest.dist <= galeR * 1.25;
+    const relevant = inRange.length > 0 || closest.dist <= warnRadius(closest) * 1.25;
     let rain, rainSrc = "演示估算", peakRain = null, peakGust = null;
     if (fdata && !relevant) {
       rain = 0;
@@ -398,11 +398,12 @@ const ImpactPanel = (() => {
     }
 
     const power = parseInt(closest.power) || 0;
+    const wr = warnRadius(closest);
     let level = 1;
-    if (rain >= 60 || (closest.dist < galeR && power >= 8)) level = 2;
+    if (rain >= 60 || (closest.dist < wr && power >= 8)) level = 2;
     if (rain >= 150 || (closest.dist < 200 && power >= 10)) level = 3;
     if (rain >= 250 || (closest.dist < 100 && power >= 14)) level = 4;
-    if (slowMover && closest.dist < galeR) level = Math.max(level, 3);
+    if (slowMover && closest.dist < wr) level = Math.max(level, 3);
 
     // 阶段：来之前 / 影响进行中 / 已过境。过境 ≠ 结束——残余降雨单独判断（美莎克教训）
     const nowT = Date.now();
@@ -453,7 +454,9 @@ const ImpactPanel = (() => {
     if (!win) {
       const lastFix = s.track[s.track.length - 1];
       const nowDist = haversine(P.loc.lat, P.loc.lng, lastFix.lat, lastFix.lng);
-      closing = closest.dist < nowDist - 150;
+      // 「正朝你来」还要求最近点相对其（届时）强度确实够近——否则几百公里外掠过的
+      // 弱残涡也会误报「靠近中」。强台风放宽到 2.5×影响半径，减弱后自动收窄。
+      closing = closest.dist < nowDist - 150 && closest.dist <= warnRadius(closest) * 2.5;
       if (fc && fc.points.length) fcEndTs = fc.points[fc.points.length - 1].time;
     }
 
@@ -675,8 +678,10 @@ const ImpactPanel = (() => {
       timeBrief = `${fmtTime(a.win.startTs)}起风雨${a.win.open ? "，预报期内持续" : `，${fmtTime(a.win.endTs)}结束`}`;
     } else if (a.closing) {
       timeBrief = `正向你的方向移动，现有预报${a.fcEndTs ? `（至 ${fmtTime(a.fcEndTs)}）` : "（约5天）"}尚未覆盖到你——建议每天回来看一眼`;
-    } else {
+    } else if (a.closest.dist <= warnRadius(a.closest) * 1.25) {
       timeBrief = `距你最近约 ${Math.round(a.closest.dist)} km，以外围影响为主`;
+    } else {
+      timeBrief = `台风最近距你约 ${Math.round(a.closest.dist)} km，预计不影响你所在区域`;
     }
     box.innerHTML = `
       <div class="lv-badge lv-${globalLevel}"><b>${lv.name}</b>风险参考 · ${locLabel()}</div>
@@ -1151,6 +1156,17 @@ const ImpactPanel = (() => {
   }
 
   function maxRadius(p) { return p && p.r7 ? Math.max(...p.r7) : null; }
+
+  /* 强度自适应影响半径(km)：有真实 7 级风圈就用，否则按该点强度估计。
+     台风会随预报路径减弱——14 级时影响可及几百公里，减弱到 8 级、残涡时该大幅收窄，
+     不能全程套用最近一次强台风的陈旧风圈（否则几百公里外的弱残涡也误报「靠近」）。 */
+  function warnRadius(p) {
+    const r = maxRadius(p);
+    if (r) return r;
+    const pw = parseInt(p && p.power) || 0;
+    return pw >= 16 ? 400 : pw >= 14 ? 350 : pw >= 12 ? 300
+      : pw >= 10 ? 230 : pw >= 8 ? 160 : pw >= 6 ? 110 : 70;
+  }
   /* 数据时间均为北京时间：显式按 +08:00 解析，海外浏览器也能与 Date.now() 正确比较 */
   function ptime(p) { return new Date(p.time.replace(" ", "T") + "+08:00").getTime(); }
 

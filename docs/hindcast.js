@@ -49,7 +49,7 @@ const Hindcast = (() => {
     }).join("");
     const d3 = s["72"], d5 = s["120"];
     const takeaway = `<b>${d.name} ${d.enName}</b>：回算 ${d.forecasts.length} 期历史预报，` +
-      `Google AI 提前 3 天（+72h）路径平均只差 <b>${d3} km</b>` +
+      `AI 提前 3 天（+72h）路径平均只差 <b>${d3} km</b>` +
       (d5 ? `，提前 5 天（+120h）约 <b>${d5} km</b>` : "") + "。";
 
     el.innerHTML = `
