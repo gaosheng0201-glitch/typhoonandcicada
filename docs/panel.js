@@ -925,6 +925,11 @@ const ImpactPanel = (() => {
 
     // 清单（按阶段：备灾 / 避险 / 恢复期）
     const items = phaseChecklist(a);
+    // 海浪清单：沿海/海岛 + 外海浪高达提示级时，置于最前（对海边人，海才是即时危险）
+    if (wave && !wave.none && P.checklists.wave_extra) {
+      const we = P.checklists.wave_extra;
+      items.unshift(...(we.generic || []).concat(we[P.persona] || []));
+    }
     // 财产处置提示：仅在登陆前、清单真出现「折价抢收/起捕/出栏」这类不可逆
     // 花钱决策时，附一小句通用提示在「非官方预警」后——数据仅供参考，请自行判断
     const rn = P.checklists.risk_note;
