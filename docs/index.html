@@ -45,7 +45,7 @@
   }
   </script>
   <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
-  <link href="style.css?v=52" rel="stylesheet">
+  <link href="style.css?v=53" rel="stylesheet">
 </head>
 <body>
   <div id="map"></div>
@@ -133,7 +133,8 @@
         <details id="d-checklist" open><summary>现在该做的</summary><div></div></details>
         <div class="wiz-nav">
           <button class="wiz-back" data-to="region">重新设置</button>
-          <button id="share-btn">生成分享卡片</button>
+          <button id="manual-btn" title="生成可保存的保命长图，断网断电时打开">保命手册</button>
+          <button id="share-btn">分享卡片</button>
         </div>
         <footer id="disclaimer-mini">
           非官方预警，以气象与应急部门发布为准；涉撤离听从当地政府安排。雨量与风力峰值为数值模式预报（Open-Meteo），存在不确定性。<br>公益项目 · 发起 <b>日成Risen</b>
@@ -154,7 +155,7 @@
 
   <div id="share-modal">
     <div id="share-box">
-      <canvas id="share-canvas"></canvas>
+      <div id="share-scroll"><canvas id="share-canvas"></canvas></div>
       <div id="share-actions">
         <button id="share-save">保存图片</button>
         <button id="share-close">关闭</button>
@@ -163,9 +164,9 @@
   </div>
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-  <script src="data.js?v=52"></script>
-  <script src="panel.js?v=52"></script>
-  <script src="app.js?v=52"></script>
-  <script src="hindcast.js?v=52"></script>
+  <script src="data.js?v=53"></script>
+  <script src="panel.js?v=53"></script>
+  <script src="app.js?v=53"></script>
+  <script src="hindcast.js?v=53"></script>
 </body>
 </html>

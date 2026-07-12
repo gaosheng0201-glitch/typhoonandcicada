@@ -37,11 +37,12 @@ const ImpactPanel = (() => {
   /* ---------- init ---------- */
 
   async function init() {
-    [P.regions, P.checklists, P.analogs, P.history] = await Promise.all([
+    [P.regions, P.checklists, P.analogs, P.history, P.survival] = await Promise.all([
       fetchJSON2("data/regions.json"),
       fetchJSON2(`data/checklists.json?t=${Date.now()}`),
       fetchJSON2(`data/analogs.json?t=${Date.now()}`),
       fetchJSON2("data/history.json").catch(() => null), // 历史档案缺失时降级
+      fetchJSON2(`data/survival.json?t=${Date.now()}`).catch(() => null), // 保命手册
     ]);
     restore();
     buildLocSelects();
@@ -829,17 +830,130 @@ const ImpactPanel = (() => {
 
   /* ---------- 分享卡（现代版：示意图 + 数据宫格 + 行动建议） ---------- */
 
+  let lastCardName = "台风与蝉";
   function bindShare() {
     document.getElementById("share-btn").onclick = drawShareCard;
+    const mb = document.getElementById("manual-btn");
+    if (mb) mb.onclick = drawSurvivalManual;
     document.getElementById("share-close").onclick = () =>
       (document.getElementById("share-modal").style.display = "none");
     document.getElementById("share-save").onclick = () => {
-      const { focus } = assessAll();
       const link = document.createElement("a");
-      link.download = `台风${focus ? focus.s.name : ""}-${locLabel()}影响卡.png`;
+      link.download = `${lastCardName}.png`;
       link.href = document.getElementById("share-canvas").toDataURL("image/png");
       link.click();
     };
+  }
+
+  /* ---------- 保命手册长图：存手机、断网断电时打开照着做 ---------- */
+  function drawSurvivalManual() {
+    const m = P.survival;
+    if (!m) return;
+    lastCardName = `台风保命手册-${locLabel()}`;
+    const { focus } = assessAll();
+    const storm = focus ? focus.s.name : "";
+    const W = 750, PAD = 40, CW = W - PAD * 2, SCALE = 2;
+    const canvas = document.getElementById("share-canvas");
+    const ctx = canvas.getContext("2d");
+    const F = (w, px) => `${w} ${px}px Georgia, "Songti SC", "STSong", "SimSun", serif`;
+
+    // 逐行折行的测量（返回行数）
+    const lines = (text, font, maxW) => {
+      ctx.font = font;
+      let line = "", n = 0;
+      for (const ch of text) {
+        if (ctx.measureText(line + ch).width > maxW) { n++; line = ch; } else line += ch;
+      }
+      return n + (line ? 1 : 0);
+    };
+    const wrap = (text, x, y, font, maxW, lh, color) => {
+      ctx.font = font; ctx.fillStyle = color;
+      let line = "", cy = y;
+      for (const ch of text) {
+        if (ctx.measureText(line + ch).width > maxW) { ctx.fillText(line, x, cy); line = ch; cy += lh; }
+        else line += ch;
+      }
+      if (line) ctx.fillText(line, x, cy);
+      return cy + lh;
+    };
+
+    // ── 测高 pass ──
+    let H = 40;
+    H += 58 + 30 + 30 + 22;                       // 标题区
+    H += 20 + m.priorities.length * 40 + 22;      // 保命三原则盒
+    for (const sec of m.sections) {
+      H += 40;                                     // 段标题
+      for (const it of sec.items) H += lines(it, F(400, 23), CW - 26) * 33 + 8;
+      H += 12;
+    }
+    const pex = m.persona_extra[P.persona];
+    if (pex) H += 24 + lines(pex, F(600, 23), CW - 26) * 33 + 24;
+    H += 20 + lines(m.footer, F(400, 18), CW) * 26 + 30;
+
+    canvas.width = W * SCALE; canvas.height = H * SCALE;
+    ctx.scale(SCALE, SCALE);
+
+    // ── 绘制 pass ──
+    roundRect(ctx, 0, 0, W, H, 28); ctx.clip();
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, "#25231f"); bg.addColorStop(1, "#1a1916");
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+
+    let y = 66;
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#eeece6"; ctx.font = F(800, 40);
+    ctx.fillText(m.title, PAD, y); y += 34;
+    ctx.fillStyle = "#ea8640"; ctx.font = F(600, 20);
+    ctx.fillText(`${locLabel()}${storm ? " · " + storm : ""} · 存进手机，真出事时打开`, PAD, y); y += 26;
+    ctx.fillStyle = "#aaa69f"; ctx.font = F(400, 18);
+    y = wrap(m.intro, PAD, y, F(400, 18), CW, 24, "#aaa69f") + 6;
+
+    // 保命三原则盒
+    const boxTop = y;
+    const boxH = 16 + m.priorities.length * 40 + 6;
+    ctx.fillStyle = "rgba(234,134,64,0.10)";
+    roundRect(ctx, PAD, boxTop, CW, boxH, 12); ctx.fill();
+    ctx.strokeStyle = "#ea8640"; ctx.lineWidth = 1.5;
+    roundRect(ctx, PAD, boxTop, CW, boxH, 12); ctx.stroke();
+    let py = boxTop + 40;
+    m.priorities.forEach((pr, i) => {
+      ctx.fillStyle = "#ea8640"; ctx.font = F(800, 26);
+      ctx.fillText(`${i + 1}`, PAD + 18, py);
+      ctx.fillStyle = "#eeece6"; ctx.font = F(700, 23);
+      ctx.fillText(pr, PAD + 48, py);
+      py += 40;
+    });
+    y = boxTop + boxH + 26;
+
+    // 各段
+    for (const sec of m.sections) {
+      ctx.fillStyle = "#eeb28f"; ctx.font = F(800, 25);
+      ctx.fillText(sec.h, PAD, y); y += 34;
+      for (const it of sec.items) {
+        ctx.fillStyle = "#ea8640"; ctx.beginPath();
+        ctx.arc(PAD + 6, y - 8, 3, 0, 7); ctx.fill();
+        y = wrap(it, PAD + 22, y, F(400, 23), CW - 26, 33, "#dcd8cf") + 8;
+      }
+      y += 12;
+    }
+
+    // 人群专属保命
+    if (pex) {
+      const bT = y, bH = 14 + lines(pex, F(600, 23), CW - 30) * 33 + 6;
+      ctx.fillStyle = "rgba(201,169,97,0.12)";
+      roundRect(ctx, PAD, bT, CW, bH, 10); ctx.fill();
+      ctx.fillStyle = "#c9a961"; ctx.font = F(700, 15);
+      ctx.fillText(`给「${(P.checklists.personas.find((p) => p.id === P.persona) || {}).name || "你"}」的一句`, PAD + 16, bT + 26);
+      wrap(pex, PAD + 16, bT + 50, F(600, 23), CW - 30, 33, "#eeece6");
+      y = bT + bH + 24;
+    }
+
+    // 页脚
+    ctx.fillStyle = "#76726a"; ctx.textAlign = "center";
+    wrap(m.footer, W / 2, y + 14, F(400, 18), CW, 26, "#76726a");
+    ctx.textAlign = "left";
+
+    document.getElementById("share-modal").style.display = "flex";
   }
 
   /* 分享卡底图：与主地图同源的 Carto dark 瓦片，位置/风圈/路径按真实地理投影 */
@@ -940,6 +1054,7 @@ const ImpactPanel = (() => {
     if (!P.storms.length) return;
     const { focus } = assessAll();
     const a = focus.a, s = focus.s;
+    lastCardName = `台风${s.name}-${locLabel()}影响卡`;
     const last = s.track[s.track.length - 1];
     const dist = haversine(P.loc.lat, P.loc.lng, last.lat, last.lng);
     const hx = 36, hy = 76, hw = 750 - 72, hh = 380;
