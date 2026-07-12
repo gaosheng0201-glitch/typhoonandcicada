@@ -108,5 +108,14 @@ const TyphoonData = (() => {
     return fetchJSON(`data/typhoon_${tfid}.json?t=${Date.now()}`);
   }
 
-  return { loadIndex, loadStorm };
+  /* 7 级风圈估算半径(km)：官方在系统减弱后常停发半径，按当前风力级数估。
+     全站唯一权威表——panel.js（评估/分享卡）与 app.js（地图风圈）都引用这里，
+     避免两处维护出现偏差。 */
+  function estGaleRadius(power) {
+    const pw = parseInt(power) || 0;
+    return pw >= 16 ? 400 : pw >= 14 ? 350 : pw >= 12 ? 300
+      : pw >= 10 ? 230 : pw >= 8 ? 160 : pw >= 6 ? 110 : 70;
+  }
+
+  return { loadIndex, loadStorm, estGaleRadius };
 })();

@@ -306,10 +306,16 @@ const ImpactPanel = (() => {
       .map((p) => ({ ...p, dist: haversine(P.loc.lat, P.loc.lng, p.lat, p.lng) }));
 
     const closest = path.reduce((a, b) => (b.dist < a.dist ? b : a));
-    let galeR = 350;
+    // 当前 7 级风圈：最近 5 个实况点内的真实半径优先；官方停发（系统减弱）时
+    // 按当前强度估算——与地图风圈同一逻辑，分享卡也用它，不再出现陈旧大圈
+    let galeR = null, galeREst = false;
     for (let i = s.track.length - 1; i >= Math.max(0, s.track.length - 5); i--) {
       const r = maxRadius(s.track[i]);
       if (r) { galeR = r; break; }
+    }
+    if (!galeR) {
+      galeR = TyphoonData.estGaleRadius(s.track[s.track.length - 1].power);
+      galeREst = true;
     }
     const inRange = path.filter((p) => p.dist < warnRadius(p));
 
@@ -460,7 +466,7 @@ const ImpactPanel = (() => {
       if (fc && fc.points.length) fcEndTs = fc.points[fc.points.length - 1].time;
     }
 
-    return { closest, galeR, inRange, win, rain, rainSrc, peakRain, peakGust, phase, postRain24,
+    return { closest, galeR, galeREst, inRange, win, rain, rainSrc, peakRain, peakGust, phase, postRain24,
              nowWx, easing, closing, fcEndTs,
              level, moveKmh, slowMover, durationH, endPoint, stillInRangeAtEnd };
   }
@@ -1000,7 +1006,7 @@ const ImpactPanel = (() => {
     ctx.beginPath(); ctx.arc(sx, sy, rPx, 0, Math.PI * 2); ctx.stroke();
     ctx.setLineDash([]);
     pill(ctx, F, sx, sy - rPx - 16,
-      `7级风圈 ${Math.round(a.galeR)} km${dist <= a.galeR ? " · 你在圈内" : ""}`,
+      `7级风圈${a.galeREst ? "估算" : ""} ${Math.round(a.galeR)} km${dist <= a.galeR ? " · 你在圈内" : ""}`,
       400, 17, "rgba(240,190,140,0.95)");
 
     // 连线 + 距离（沿线中点，垂向偏移避让）
@@ -1159,13 +1165,10 @@ const ImpactPanel = (() => {
 
   /* 强度自适应影响半径(km)：有真实 7 级风圈就用，否则按该点强度估计。
      台风会随预报路径减弱——14 级时影响可及几百公里，减弱到 8 级、残涡时该大幅收窄，
-     不能全程套用最近一次强台风的陈旧风圈（否则几百公里外的弱残涡也误报「靠近」）。 */
+     不能全程套用最近一次强台风的陈旧风圈（否则几百公里外的弱残涡也误报「靠近」）。
+     估算表在 data.js（全站唯一权威来源，与地图风圈共用）。 */
   function warnRadius(p) {
-    const r = maxRadius(p);
-    if (r) return r;
-    const pw = parseInt(p && p.power) || 0;
-    return pw >= 16 ? 400 : pw >= 14 ? 350 : pw >= 12 ? 300
-      : pw >= 10 ? 230 : pw >= 8 ? 160 : pw >= 6 ? 110 : 70;
+    return maxRadius(p) || TyphoonData.estGaleRadius(p && p.power);
   }
   /* 数据时间均为北京时间：显式按 +08:00 解析，海外浏览器也能与 Date.now() 正确比较 */
   function ptime(p) { return new Date(p.time.replace(" ", "T") + "+08:00").getTime(); }

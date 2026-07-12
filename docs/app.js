@@ -253,21 +253,14 @@ function lastWithRadius(track) {
   return null;
 }
 
-/* 7 级风圈估算半径(km)：上游在台风减弱后常停发半径，按当前强度估。
-   与 panel.js warnRadius 同表——不能把强台风时期的陈旧大圈套在已减弱的系统上 */
-function estRadius7(power) {
-  const pw = parseInt(power) || 0;
-  return pw >= 16 ? 400 : pw >= 14 ? 350 : pw >= 12 ? 300
-    : pw >= 10 ? 230 : pw >= 8 ? 160 : pw >= 6 ? 110 : 70;
-}
-
-/* 风圈展示数据：优先真实半径；停发时返回按强度估算的均匀圈（est 标记） */
+/* 风圈展示数据：优先真实半径；停发时返回按强度估算的均匀圈（est 标记）。
+   估算表在 data.js estGaleRadius——与影响评估/分享卡同源，避免两处维护 */
 function radiusForDisplay(track) {
   const rp = lastWithRadius(track);
   if (rp) return { ...rp, est: false };
   const last = track[track.length - 1];
   if (!last || !last.power) return null;
-  const r = estRadius7(last.power);
+  const r = TyphoonData.estGaleRadius(last.power);
   return { r7: [r, r, r, r], r10: null, r12: null, est: true };
 }
 
