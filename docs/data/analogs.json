@@ -8967,6 +8967,294 @@
     "https://www.chinanews.com/sh/2020/08-27/9275237.shtml",
     "https://zh.wikipedia.org/zh-hans/台风巴威_(2020年)"
    ]
+  },
+  {
+   "eventId": "201822-mangkhut-肇庆",
+   "typhoon": {
+    "tfid": "201822",
+    "name": "山竹",
+    "enName": "MANGKHUT"
+   },
+   "region": {
+    "province": "广东",
+    "city": "肇庆"
+   },
+   "hazard": {
+    "rainTotalMm": null,
+    "peakPower": null,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 3,
+    "flood": "广佛肇高速东往西K97处因山体滑坡，大量山洪泥石涌入路面，造成大面积积水中断",
+    "power": "肇庆与江门、惠州等地受灾影响严重，广东电网组织人员全力抢修复电",
+    "transport": "肇庆各粤运车站所有客运班线全面停班；广佛肇高速K97路段因积水中断通行",
+    "note": "全市安全转移群众35146多人，城区多处树木被吹倒、街道杂物遍地"
+   },
+   "narrative": "2018年山竹过境肇庆：广佛肇高速K97处山洪泥石涌入路面致积水中断，肇庆客运班线全面停班，全市安全转移群众35146多人，城区多处树木被吹倒。",
+   "sources": [
+    "https://m.thepaper.cn/newsDetail_forward_2453304",
+    "https://wap.ycwb.com/2018-09/16/content_30092216.htm"
+   ]
+  },
+  {
+   "eventId": "201409-rammasun-澄迈",
+   "typhoon": {
+    "tfid": "201409",
+    "name": "威马逊",
+    "enName": "RAMMASUN"
+   },
+   "region": {
+    "province": "海南",
+    "city": "澄迈"
+   },
+   "hazard": {
+    "rainTotalMm": 445.2,
+    "peakPower": null,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 3,
+    "flood": "全县普降暴雨，金江、永发、瑞溪等7镇降雨超300毫米，金江镇最高445.2毫米；福山镇1.9万亩香蕉地绝收",
+    "power": "供电线路持续中断58条次，通讯中断12条次",
+    "transport": "公路中断205条次，房屋倒塌158间，紧急转移5.92万人（含渔民3082人）",
+    "note": "桥头测站最大风速42米/秒(14级)，为1959年建站以来影响澄迈最强台风，12级风圈影响长达9小时"
+   },
+   "narrative": "威马逊为澄迈建站以来最强台风，最大风速42米/秒，金江镇降雨445.2毫米，全县公路中断205条次、供电中断58条次，房屋倒塌158间，5.92万人紧急转移。",
+   "sources": [
+    "新浪海南资讯 http://hainan.sina.com.cn/news/hnyw/2014-07-19/175848695.html",
+    "新浪海南资讯（转中国青年报） https://hainan.sina.com.cn/news/m/2014-07-21/075648763.html"
+   ]
+  },
+  {
+   "eventId": "201822-mangkhut-云浮",
+   "typhoon": {
+    "tfid": "201822",
+    "name": "山竹",
+    "enName": "MANGKHUT"
+   },
+   "region": {
+    "province": "广东",
+    "city": "云浮"
+   },
+   "hazard": {
+    "rainTotalMm": 268.2,
+    "peakPower": null,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 2,
+    "flood": "新兴县里洞镇录得268.2毫米暴雨，云浮位列全省特大暴雨（超250毫米）十地级市之一",
+    "transport": "台风逼近期间，云浮与其他17个地级市一同实施高速公路及特大桥梁入口封闭措施",
+    "note": "未查到云浮市停电户数、内涝转移人口等具体统计数字，公开报道以降雨量和交通管制为主"
+   },
+   "narrative": "山竹影响云浮，新兴县里洞镇录得268.2毫米暴雨，云浮为全省特大暴雨（超250毫米）十市之一，台风逼近时云浮所在18个地级市实施高速公路及特大桥梁入口封闭。",
+   "sources": [
+    "https://wap.ycwb.com/2018-09/18/content_30093747.htm",
+    "https://www.thepaper.cn/newsDetail_forward_2446268"
+   ]
+  },
+  {
+   "eventId": "202311-haikui-河源",
+   "typhoon": {
+    "tfid": "202311",
+    "name": "海葵",
+    "enName": "HAIKUI"
+   },
+   "region": {
+    "province": "广东",
+    "city": "河源"
+   },
+   "hazard": {
+    "rainTotalMm": 145.1,
+    "peakPower": null,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 2,
+    "flood": "9月6日8时至7日8时，龙川南部、东源东部、紫金东部出现暴雨到大暴雨，紫金全县50~100毫米雨量站76个、100毫米以上16个，龙窝录得最大降雨145.1毫米",
+    "note": "台风海葵减弱后的热带低压中心9月6日晨5时位于河源紫金县境内，残涡持续致紫金瓦溪最大小时雨强40.8毫米；前期降雨致土壤含水量高，气象部门重点提示防范山体滑坡、崩塌等地质灾害"
+   },
+   "narrative": "2023年台风海葵残涡9月6日晨移到河源紫金境内，龙川、东源、紫金东部暴雨到大暴雨，龙窝24小时145.1毫米，紫金发暴雨红色预警，重点防山体滑坡、崩塌。",
+   "sources": [
+    "https://news.fznews.com.cn/gngj/20230906/W4TI26p6Cq.shtml",
+    "https://m.thepaper.cn/newsDetail_forward_24475502",
+    "https://m.thepaper.cn/newsDetail_forward_24529778"
+   ]
+  },
+  {
+   "eventId": "202305-doksuri-三明",
+   "typhoon": {
+    "tfid": "202305",
+    "name": "杜苏芮",
+    "enName": "DOKSURI"
+   },
+   "region": {
+    "province": "福建",
+    "city": "三明"
+   },
+   "hazard": {
+    "rainTotalMm": 225.2,
+    "peakPower": null,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 2,
+    "flood": "三明市区（三元区）8个乡镇街道过程雨量超100毫米，3座小型水库一度超汛限（后恢复正常运行）",
+    "transport": "三明地区部分旅客列车停运",
+    "note": "台风未在三明本地登陆，穿境影响以强降雨、水库水位短时超限、铁路停运为主，未见严重内涝或停电停水的官方记载"
+   },
+   "narrative": "2023年杜苏芮登陆晋江后穿过三明境内，三明市区（三元区）过程雨量最大225.2毫米，多座小型水库短时超汛限，三明地区部分旅客列车停运。",
+   "sources": [
+    "https://www.smsy.gov.cn/zwgk/sl/202311/t20231129_1979972.htm",
+    "http://sm.fjsen.com/wap/2023-07/28/content_31372727.htm"
+   ]
+  },
+  {
+   "eventId": "202305-doksuri-龙岩",
+   "typhoon": {
+    "tfid": "202305",
+    "name": "杜苏芮",
+    "enName": "DOKSURI"
+   },
+   "region": {
+    "province": "福建",
+    "city": "龙岩"
+   },
+   "hazard": {
+    "rainTotalMm": null,
+    "peakPower": null,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 2,
+    "flood": "预报28～29日全市暴雨到大暴雨、局部特大暴雨，过程累积雨量150～350毫米，局部可达400～450毫米",
+    "transport": "台风登陆后中心穿过龙岩市，在境内停留6～8小时；全市取消旅游团队40个、延期25个，涉及游客2313人",
+    "evacuation": "全市2308个避灾点已启动，对1401处高陡边坡和15274名危险区域建档立卡群众完成巡查排查，抢险救援队伍10661人集结待命",
+    "note": "7月28日10:15市气象局变更发布台风黄色预警（Ⅲ级）和暴雨黄色预警，15:15防台风应急响应降为Ⅲ级"
+   },
+   "narrative": "台风杜苏芮中心罕见穿越龙岩，停留6~8小时，预报雨量150~450毫米，警示山洪滑坡内涝风险。全市启动2308个避灾点，排查1401处高陡边坡，取消旅游团40个。",
+   "sources": [
+    "https://www.fjdaily.com/app/content/2023-07/27/content_1980725.html",
+    "https://www.fjdaily.com/app/content/2023-07/28/content_1983587.html"
+   ]
+  },
+  {
+   "eventId": "201621-sarika-屯昌",
+   "typhoon": {
+    "tfid": "201621",
+    "name": "莎莉嘉",
+    "enName": "SARIKA"
+   },
+   "region": {
+    "province": "海南",
+    "city": "屯昌"
+   },
+   "hazard": {
+    "rainTotalMm": 265.8,
+    "peakPower": null,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 1,
+    "flood": "此轮华南暴雨过程单点最大雨量出现在屯昌",
+    "note": "台风在海南万宁登陆穿岛后西行，19日在广西防城港二次登陆；仅查到屯昌雨量记录，未查到本地具体灾情报道"
+   },
+   "narrative": "超强台风莎莉嘉登陆海南万宁后穿岛，此轮华南暴雨过程全区最大点雨量出现在屯昌，达265.8毫米。",
+   "sources": [
+    "http://html.rhhz.net/BYZH/html/2413.htm"
+   ]
+  },
+  {
+   "eventId": "201409-rammasun-临高",
+   "typhoon": {
+    "tfid": "201409",
+    "name": "威马逊",
+    "enName": "RAMMASUN"
+   },
+   "region": {
+    "province": "海南",
+    "city": "临高"
+   },
+   "hazard": {
+    "rainTotalMm": 446,
+    "peakPower": null,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 4,
+    "flood": "全县19个低洼村庄严重受淹，台风后统一开展消毒防疫；最大降雨量达446毫米",
+    "power": "境内70条高压线路、860余条供电线路、960余台低压公用变压器停电，至7月底全部恢复送电",
+    "transport": "水毁道路80多公里，至7月底基本抢修恢复通行",
+    "note": "渔业大县受损重：69艘渔船沉没、25余艘受损，深水网箱损毁948口；境内最大风力11级，全县转移2.6万人"
+   },
+   "narrative": "2014年威马逊致临高最大降雨446毫米，2.6万人转移，19个村庄内涝；860余条供电线路停电、80余公里道路损毁；69艘渔船沉没，深水网箱损毁948口。",
+   "sources": [
+    "海南特区报（转新浪海南，2014-08-07） http://hainan.sina.com.cn/news/hnyw/2014-08-07/083249851.html"
+   ]
+  },
+  {
+   "eventId": "201330-haiyan-乐东",
+   "typhoon": {
+    "tfid": "201330",
+    "name": "海燕",
+    "enName": "HAIYAN"
+   },
+   "region": {
+    "province": "海南",
+    "city": "乐东"
+   },
+   "hazard": {
+    "rainTotalMm": null,
+    "peakPower": null,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 2,
+    "note": "台风中心一度距乐东莺歌海镇约25公里近海掠过，中心最大风力14级；乐东为海南南部受灾最重的县之一，已种冬季瓜菜大面积受损绝收；未查到乐东本地内涝/停电/交通具体资料"
+   },
+   "narrative": "2013年超强台风海燕以14级从乐东莺歌海约25公里近海掠过，乐东是海南南部受灾最重的县之一，已种冬季瓜菜大面积受损绝收。",
+   "sources": [
+    "https://hainan.sina.com.cn/news/s/2013-11-10/184231414.html",
+    "http://politics.people.com.cn/n/2013/1114/c70731-23541757.html"
+   ]
+  },
+  {
+   "eventId": "201330-haiyan-陵水",
+   "typhoon": {
+    "tfid": "201330",
+    "name": "海燕",
+    "enName": "HAIYAN"
+   },
+   "region": {
+    "province": "海南",
+    "city": "陵水"
+   },
+   "hazard": {
+    "rainTotalMm": 233,
+    "peakPower": null,
+    "landfall": false,
+    "approx": true
+   },
+   "impact": {
+    "level": 2,
+    "transport": "陵水站所在的海南东环动车全部停运，琼州海峡全线停航",
+    "note": "台风海燕掠过海南岛西南部近海，陵水出现大暴雨量级降雨（233毫米），是省防总重点检查防御地区之一"
+   },
+   "narrative": "2013年海燕掠过海南岛西南部近海，陵水出现大暴雨量级降雨（233毫米），海南东环动车全部停运，省防总派工作组赴陵水检查防御。",
+   "sources": [
+    "http://weather.news.sina.com.cn/news/2013/1111/095696229.html",
+    "https://www.chinadaily.com.cn/dfpd/hain/2013-11/11/content_17095625.htm"
+   ]
   }
  ]
 }
