@@ -277,7 +277,9 @@ const ImpactPanel = (() => {
       const tier = a.postRain24 >= 30 ? 3 : localImpactTier(a);
       const base = (tier >= 3 ? ph.after : tier === 2 ? (ph.after_mid || ph.after)
         : (ph.after_light || ph.after)) || [];
-      return base.concat(ex("after_extra"));
+      // 人群专属恢复也分档：擦肩而过给「恢复常态」短提示，真受灾给完整善后动作，
+      // 不拿「排水抢救受淹作物」去套一个田里没进水的农户
+      return base.concat(tier === 1 ? ex("after_light_extra") : ex("after_extra"));
     }
     if (a.phase === "approach" && !a.win && a.closing && ph.watch) {
       return ph.watch.concat(ex("watch_extra"));
