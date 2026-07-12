@@ -42,7 +42,7 @@ const ImpactPanel = (() => {
       fetchJSON2(`data/checklists.json?t=${Date.now()}`),
       fetchJSON2(`data/analogs.json?t=${Date.now()}`),
       fetchJSON2("data/history.json").catch(() => null), // 历史档案缺失时降级
-      fetchJSON2(`data/survival.json?t=${Date.now()}`).catch(() => null), // 保命手册
+      fetchJSON2(`data/survival.json?t=${Date.now()}`).catch(() => null), // 应急手册
     ]);
     restore();
     buildLocSelects();
@@ -818,18 +818,16 @@ const ImpactPanel = (() => {
     // 清单（按阶段：备灾 / 避险 / 恢复期）
     const items = phaseChecklist(a);
     // 财产处置风险提示：仅在登陆前、清单真出现「折价抢收/起捕/出栏」这类不可逆
-    // 花钱决策时显示——预报会变，别单凭它把家当低价处理了；备料囤货这类不提示
+    // 花钱决策时，附一小句在「非官方预警」后——预报会变，别单凭它低价处理家当
     const rn = (P.checklists.risk_note || {})[P.persona];
     const preImpact = a.phase !== "during" && a.phase !== "after";
     const hasDisposal = /抢收|起捕|出栏|折价|抛售/.test(items.join(""));
     const riskHTML = (rn && preImpact && hasDisposal)
-      ? `<div class="risk-note"><span class="rn-ico">⚖️</span><span>${rn}</span></div>`
-      : "";
+      ? `<span class="risk-hint">${rn}</span>` : "";
     document.querySelector("#d-checklist > div").innerHTML =
-      riskHTML +
       items.map((item) => `
         <label class="check-row"><input type="checkbox"><span>${item}</span></label>`).join("") +
-      `<div class="muted" style="margin-top:6px">依据气象部门防御指引与历史灾害经验整理 · 非官方预警</div>`;
+      `<div class="muted" style="margin-top:6px">依据气象部门防御指引与历史灾害经验整理 · 非官方预警${riskHTML}</div>`;
     document.querySelectorAll("#d-checklist .check-row input").forEach((el2) => {
       el2.onchange = () => el2.closest(".check-row").classList.toggle("done", el2.checked);
     });
@@ -854,20 +852,24 @@ const ImpactPanel = (() => {
     };
   }
 
-  /* ---------- 保命手册长图：存手机、断网断电时打开照着做 ---------- */
+  /* ---------- 应急手册长图：存手机、断网断电时打开照着做 ----------
+     阅读层级：三原则（总纲）→ 判断严重程度（对号入座）→ ①②③ 分级行动
+     （颜色由缓到急、按顺序排）→ 求救号/撑几天/风雨后（参考）→ 人群专属 */
   function drawSurvivalManual() {
     const m = P.survival;
     if (!m) return;
-    lastCardName = `台风保命手册-${locLabel()}`;
+    lastCardName = `台风应急手册-${locLabel()}`;
     const { focus } = assessAll();
     const storm = focus ? focus.s.name : "";
-    const W = 750, PAD = 40, CW = W - PAD * 2, SCALE = 2;
+    const W = 760, PAD = 40, CW = W - PAD * 2, SCALE = 2;
+    const LC = { green: "#7cbf6b", amber: "#ea8640", red: "#e46b60" };
+    const LH = 32;                                 // 正文行高
+    const IND = 24;                                // 项目缩进
     const canvas = document.getElementById("share-canvas");
     const ctx = canvas.getContext("2d");
     const F = (w, px) => `${w} ${px}px Georgia, "Songti SC", "STSong", "SimSun", serif`;
 
-    // 逐行折行的测量（返回行数）
-    const lines = (text, font, maxW) => {
+    const lines = (text, font, maxW) => {         // 折行行数
       ctx.font = font;
       let line = "", n = 0;
       for (const ch of text) {
@@ -885,19 +887,33 @@ const ImpactPanel = (() => {
       if (line) ctx.fillText(line, x, cy);
       return cy + lh;
     };
+    const bulletH = (it) => lines(it, F(400, 22), CW - IND - 10) * LH + 7;
+
+    const pex = m.persona_extra[P.persona];
 
     // ── 测高 pass ──
     let H = 40;
-    H += 58 + 30 + 30 + 22;                       // 标题区
-    H += 20 + m.priorities.length * 40 + 22;      // 保命三原则盒
-    for (const sec of m.sections) {
-      H += 40;                                     // 段标题
-      for (const it of sec.items) H += lines(it, F(400, 23), CW - 26) * 33 + 8;
-      H += 12;
+    H += 50 + 28;                                          // 标题 + kicker
+    H += lines(m.intro, F(400, 18), CW) * 25 + 18;         // 引言
+    H += 14 + m.principles.length * 37 + 10 + 26;          // 三原则盒
+    // 判断严重程度
+    H += 40;
+    for (const r of m.locate.rows) H += lines(r.state, F(700, 19), CW - 52) * 26 + 24 + 12;
+    H += 16;
+    // 分级行动
+    for (const t of m.tiers) {
+      H += 42 + lines(t.sub, F(400, 17), CW - 52) * 23 + 8;
+      for (const it of t.items) H += bulletH(it);
+      H += 20;
     }
-    const pex = m.persona_extra[P.persona];
-    if (pex) H += 24 + lines(pex, F(600, 23), CW - 26) * 33 + 24;
-    H += 20 + lines(m.footer, F(400, 18), CW) * 26 + 30;
+    // 参考段
+    for (const ref of m.refs) {
+      H += 36;
+      for (const it of ref.items) H += bulletH(it);
+      H += 14;
+    }
+    if (pex) H += 24 + lines(pex, F(600, 22), CW - 32) * LH + 26;
+    H += 16 + lines(m.footer, F(400, 17), CW) * 25 + 30;
 
     canvas.width = W * SCALE; canvas.height = H * SCALE;
     ctx.scale(SCALE, SCALE);
@@ -908,58 +924,95 @@ const ImpactPanel = (() => {
     bg.addColorStop(0, "#25231f"); bg.addColorStop(1, "#1a1916");
     ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
 
-    let y = 66;
-    ctx.textAlign = "left";
-    ctx.fillStyle = "#eeece6"; ctx.font = F(800, 40);
-    ctx.fillText(m.title, PAD, y); y += 34;
-    ctx.fillStyle = "#ea8640"; ctx.font = F(600, 20);
-    ctx.fillText(`${locLabel()}${storm ? " · " + storm : ""} · 存进手机，真出事时打开`, PAD, y); y += 26;
-    ctx.fillStyle = "#aaa69f"; ctx.font = F(400, 18);
-    y = wrap(m.intro, PAD, y, F(400, 18), CW, 24, "#aaa69f") + 6;
+    // 圆角方形序号徽章
+    const badge = (x, cyTop, n, color, s) => {
+      ctx.fillStyle = color; roundRect(ctx, x, cyTop, s, s, 6); ctx.fill();
+      ctx.fillStyle = "#1a1916"; ctx.font = F(800, s - 8); ctx.textAlign = "center";
+      ctx.fillText(n, x + s / 2, cyTop + s - Math.round(s * 0.28));
+      ctx.textAlign = "left";
+    };
+    const bullet = (it, y, color) => {
+      ctx.fillStyle = color; ctx.beginPath();
+      ctx.arc(PAD + 6, y - 7, 3, 0, 7); ctx.fill();
+      return wrap(it, PAD + IND, y, F(400, 22), CW - IND - 10, LH, "#dcd8cf") + 7;
+    };
 
-    // 保命三原则盒
-    const boxTop = y;
-    const boxH = 16 + m.priorities.length * 40 + 6;
+    let y = 62;
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#eeece6"; ctx.font = F(800, 38);
+    ctx.fillText(m.title, PAD, y); y += 28;
+    ctx.fillStyle = "#ea8640"; ctx.font = F(600, 18);
+    ctx.fillText(`${locLabel()}${storm ? " · " + storm : ""} · ${m.kicker}`, PAD, y); y += 26;
+    y = wrap(m.intro, PAD, y, F(400, 18), CW, 25, "#aaa69f") + 4;
+
+    // 三原则盒
+    const boxTop = y, boxH = 14 + m.principles.length * 37 + 6;
     ctx.fillStyle = "rgba(234,134,64,0.10)";
     roundRect(ctx, PAD, boxTop, CW, boxH, 12); ctx.fill();
     ctx.strokeStyle = "#ea8640"; ctx.lineWidth = 1.5;
     roundRect(ctx, PAD, boxTop, CW, boxH, 12); ctx.stroke();
-    let py = boxTop + 40;
-    m.priorities.forEach((pr, i) => {
-      ctx.fillStyle = "#ea8640"; ctx.font = F(800, 26);
+    let py = boxTop + 38;
+    m.principles.forEach((pr, i) => {
+      ctx.fillStyle = "#ea8640"; ctx.font = F(800, 24);
       ctx.fillText(`${i + 1}`, PAD + 18, py);
-      ctx.fillStyle = "#eeece6"; ctx.font = F(700, 23);
-      ctx.fillText(pr, PAD + 48, py);
-      py += 40;
+      ctx.fillStyle = "#eeece6"; ctx.font = F(700, 22);
+      ctx.fillText(pr, PAD + 46, py);
+      py += 37;
     });
     y = boxTop + boxH + 26;
 
-    // 各段
-    for (const sec of m.sections) {
-      ctx.fillStyle = "#eeb28f"; ctx.font = F(800, 25);
-      ctx.fillText(sec.h, PAD, y); y += 34;
-      for (const it of sec.items) {
-        ctx.fillStyle = "#ea8640"; ctx.beginPath();
-        ctx.arc(PAD + 6, y - 8, 3, 0, 7); ctx.fill();
-        y = wrap(it, PAD + 22, y, F(400, 23), CW - 26, 33, "#dcd8cf") + 8;
-      }
-      y += 12;
+    // 判断严重程度（对号入座）
+    ctx.fillStyle = "#eeece6"; ctx.font = F(800, 22);
+    ctx.fillText(m.locate.h, PAD, y); y += 34;
+    for (const r of m.locate.rows) {
+      const c = LC[r.level];
+      badge(PAD, y - 15, r.n, c, 22);
+      const yA = wrap(r.state, PAD + 34, y, F(700, 19), CW - 52, 26, "#eeece6");
+      ctx.fillStyle = c; ctx.font = F(800, 18);
+      ctx.fillText(`→ ${r.act}`, PAD + 34, yA + 2);
+      y = yA + 24 + 12;
+    }
+    y += 16;
+
+    // ①②③ 分级行动
+    for (const t of m.tiers) {
+      const c = LC[t.level], top = y - 26;
+      badge(PAD, y - 22, t.n, c, 30);
+      ctx.fillStyle = c; ctx.font = F(800, 24);
+      ctx.fillText(t.h, PAD + 42, y); y += 24;
+      ctx.fillStyle = "#8f8b83";
+      y = wrap(t.sub, PAD + 42, y, F(400, 17), CW - 52, 23, "#8f8b83") + 8;
+      const listTop = y;
+      for (const it of t.items) y = bullet(it, y, c);
+      // 该档左侧的细色条：从徽章顶到最后一项
+      ctx.fillStyle = c; ctx.globalAlpha = 0.5;
+      ctx.fillRect(PAD + 13, listTop - 4, 2, y - listTop - 3);
+      ctx.globalAlpha = 1;
+      y += 20;
     }
 
-    // 人群专属保命
+    // 参考段（求救号 / 撑几天 / 风雨后）
+    for (const ref of m.refs) {
+      ctx.fillStyle = "#eeb28f"; ctx.font = F(800, 20);
+      ctx.fillText(ref.h, PAD, y); y += 30;
+      for (const it of ref.items) y = bullet(it, y, "#c9a961");
+      y += 14;
+    }
+
+    // 人群专属
     if (pex) {
-      const bT = y, bH = 14 + lines(pex, F(600, 23), CW - 30) * 33 + 6;
+      const bT = y, bH = 14 + lines(pex, F(600, 22), CW - 32) * LH + 6;
       ctx.fillStyle = "rgba(201,169,97,0.12)";
       roundRect(ctx, PAD, bT, CW, bH, 10); ctx.fill();
       ctx.fillStyle = "#c9a961"; ctx.font = F(700, 15);
       ctx.fillText(`给「${(P.checklists.personas.find((p) => p.id === P.persona) || {}).name || "你"}」的一句`, PAD + 16, bT + 26);
-      wrap(pex, PAD + 16, bT + 50, F(600, 23), CW - 30, 33, "#eeece6");
-      y = bT + bH + 24;
+      wrap(pex, PAD + 16, bT + 50, F(600, 22), CW - 32, LH, "#eeece6");
+      y = bT + bH + 26;
     }
 
     // 页脚
     ctx.fillStyle = "#76726a"; ctx.textAlign = "center";
-    wrap(m.footer, W / 2, y + 14, F(400, 18), CW, 26, "#76726a");
+    wrap(m.footer, W / 2, y + 12, F(400, 17), CW, 25, "#76726a");
     ctx.textAlign = "left";
 
     document.getElementById("share-modal").style.display = "flex";
