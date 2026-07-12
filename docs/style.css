@@ -441,3 +441,22 @@ button, select, input { font-family: var(--serif); }
 #time-label { font-family: var(--serif); font-size: 13px; color: var(--ink); margin-top: 4px; letter-spacing: .02em; }
 #time-label .lead { color: var(--accent); font-weight: 600; }
 @media (max-width: 680px) { #time-slider { bottom: 74px; padding: 8px 12px 10px; } #time-label { font-size: 12px; } }
+
+/* 时间轴：播放键 + 用户位置标记 */
+.ts-row { display: flex; align-items: center; gap: 10px; }
+#time-play {
+  flex: none; width: 30px; height: 30px; border-radius: 50%; cursor: pointer;
+  background: var(--accent); color: var(--paper); border: none; font-size: 12px;
+  font-family: var(--serif); line-height: 1; display: grid; place-items: center;
+}
+#time-play:hover { filter: brightness(1.08); }
+.user-marker { display: flex; flex-direction: column; align-items: center; pointer-events: none; }
+.um-dot {
+  width: 13px; height: 13px; border-radius: 50%; background: var(--ink);
+  border: 2.5px solid var(--paper); box-shadow: 0 0 0 2px rgba(238,236,230,.35), 0 1px 4px rgba(0,0,0,.5);
+}
+.um-label {
+  margin-top: 3px; font-family: var(--serif); font-size: 11.5px; color: var(--ink);
+  background: rgba(29,28,24,.82); border: 1px solid var(--hairline); border-radius: 6px;
+  padding: 1px 7px; white-space: nowrap;
+}

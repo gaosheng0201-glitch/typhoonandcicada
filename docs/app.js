@@ -436,8 +436,10 @@ async function toggleRadar(on) {
   }
   if (!ensureRadarLayer()) { map.once("load", () => rv.on && toggleRadar(true)); return; }
   map.getSource("rv-radar").setTiles([rvTileUrl()]);
-  map.setLayoutProperty("rv-radar", "visibility", "visible");
-  document.getElementById("radar-time").textContent = radarTimeLabel();
+  // 若时间轴正停在未来帧，雷达（实况）不显示
+  const future = wind.on && wind.idx > 0;
+  map.setLayoutProperty("rv-radar", "visibility", future ? "none" : "visible");
+  document.getElementById("radar-time").textContent = future ? "雷达仅实况 · 拖回「现在」可见" : radarTimeLabel();
 }
 
 async function refreshRadar() {
@@ -520,8 +522,14 @@ async function toggleWind(on) {
   document.getElementById("wind-legend").hidden = !on;
   document.getElementById("time-slider").hidden = !on;
   if (!on) {
+    stopPlay();
     for (const id of WIND_LAYERS) if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none");
     if (map.getLayer("storm-at-time")) map.setLayoutProperty("storm-at-time", "visibility", "none");
+    // 关风力时把被时间轴隐掉的雷达恢复到「现在」
+    if (rv.on && map.getLayer("rv-radar")) {
+      map.setLayoutProperty("rv-radar", "visibility", "visible");
+      document.getElementById("radar-time").textContent = radarTimeLabel();
+    }
     return;
   }
   try { await loadWind(); }
@@ -536,17 +544,40 @@ async function toggleWind(on) {
   document.getElementById("wind-time").textContent = wind.updatedAt ? `更新于 ${wind.updatedAt}` : "";
 }
 
-/* 应用某一帧：风场箭头 + 台风该时刻位置标记 + 时间标签 */
+/* 应用某一帧：风场箭头 + 台风该时刻位置标记 + 时间标签 + 雷达联动 */
 function applyFrame(idx) {
   wind.idx = idx;
   if (map.getSource("wind-src")) map.getSource("wind-src").setData(windFrameFC(idx));
   updateStormMarker(idx);
+  // 雷达是实况观测，无法表示未来——拖离「现在」时自动隐藏并提示
+  if (rv.on && map.getLayer("rv-radar")) {
+    map.setLayoutProperty("rv-radar", "visibility", idx === 0 ? "visible" : "none");
+    document.getElementById("radar-time").textContent = idx === 0
+      ? radarTimeLabel() : "雷达仅实况 · 拖回「现在」可见";
+  }
   const lead = idx * wind.stepH;
   const t = wind.times[idx] ? new Date(new Date(wind.times[idx].replace("Z", "+00:00")).getTime() + 8 * 3.6e6) : null;
   const when = t ? `${t.getUTCDate()}日${String(t.getUTCHours()).padStart(2, "0")}时` : "";
   document.getElementById("time-label").innerHTML = lead === 0
     ? `现在 · ${when}（北京时）`
     : `<span class="lead">+${lead}h</span> · ${when}（北京时，预报）`;
+}
+
+/* 时间轴自动播放 */
+let playTimer = null;
+function stopPlay() {
+  if (playTimer) { clearInterval(playTimer); playTimer = null; }
+  document.getElementById("time-play").textContent = "▶";
+}
+function togglePlay() {
+  const rng = document.getElementById("time-range");
+  if (playTimer) { stopPlay(); return; }
+  document.getElementById("time-play").textContent = "⏸";
+  playTimer = setInterval(() => {
+    const n = (wind.idx + 1) % Math.max(1, wind.times.length);
+    rng.value = String(n);
+    applyFrame(n);
+  }, 750);
 }
 
 /* 台风时刻标记：把选中台风的实况+中国预报轨迹插值到该帧时刻，画一个空心环 */
@@ -606,7 +637,26 @@ async function refreshWind() {
 }
 
 document.getElementById("layer-wind").onclick = () => toggleWind(!wind.on);
-document.getElementById("time-range").oninput = (e) => { if (wind.on) applyFrame(+e.target.value); };
+document.getElementById("time-range").oninput = (e) => { if (wind.on) { stopPlay(); applyFrame(+e.target.value); } };
+document.getElementById("time-play").onclick = () => { if (wind.on) togglePlay(); };
+
+/* 「你」的位置标记：面板选点/浏览器定位后，在大图上标出用户位置，
+   一眼看清自己和台风的关系。用 HTML Marker（本站底图无 glyphs，符号文字用不了）。 */
+let userMarker = null;
+window.onUserLoc = (lat, lng, label) => {
+  if (!window.map || lat == null || lng == null) return;
+  const place = () => {
+    if (!userMarker) {
+      const el = document.createElement("div");
+      el.className = "user-marker";
+      el.innerHTML = '<span class="um-dot"></span><span class="um-label"></span>';
+      userMarker = new maplibregl.Marker({ element: el, anchor: "bottom" });
+    }
+    userMarker.getElement().querySelector(".um-label").textContent = label || "你";
+    userMarker.setLngLat([lng, lat]).addTo(map);
+  };
+  map.loaded() ? place() : map.once("load", place);
+};
 
 /* ---------- helpers ---------- */
 

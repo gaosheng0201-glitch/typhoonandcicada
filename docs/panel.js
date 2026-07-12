@@ -187,6 +187,8 @@ const ImpactPanel = (() => {
     loadForecast();
     renderBar();
     renderResult();
+    // 通知地图更新「你」的位置标记（app.js 定义 onUserLoc）
+    if (window.onUserLoc) window.onUserLoc(P.loc.lat, P.loc.lng, locLabel());
   }
 
   function useMyLocation() {
