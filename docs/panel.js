@@ -271,15 +271,20 @@ const ImpactPanel = (() => {
     if (a.phase === "during" && a.easing && ph.easing) {
       return ph.easing.concat(ex("easing_extra"));
     }
-    if (a.phase === "during" && ph.during) return ph.during.concat(ex("during_extra"));
+    if (a.phase === "during") {
+      // 停留型台风：追加「被困数天怎么撑」——项目缘起（美莎克）场景
+      const stall = (a.slowMover && ph.during_stall) ? ph.during_stall : [];
+      return (ph.during || []).concat(stall, ex("during_extra"));
+    }
     if (a.phase === "after") {
       // 按本地「实际」影响强度分 3 档：外围掠过 / 明显影响 / 正面重创
       const tier = a.postRain24 >= 30 ? 3 : localImpactTier(a);
       const base = (tier >= 3 ? ph.after : tier === 2 ? (ph.after_mid || ph.after)
         : (ph.after_light || ph.after)) || [];
-      // 人群专属恢复也分档：擦肩而过给「恢复常态」短提示，真受灾给完整善后动作，
-      // 不拿「排水抢救受淹作物」去套一个田里没进水的农户
-      return base.concat(tier === 1 ? ex("after_light_extra") : ex("after_extra"));
+      // 人群专属恢复分档各有专属：擦肩而过给「恢复常态」，明显影响给中档善后，
+      // 正面重创给完整善后——不拿「排水抢救受淹作物」去套一个田里没进水的农户
+      const pex = tier === 1 ? ex("after_light_extra") : tier === 2 ? ex("after_mid_extra") : ex("after_extra");
+      return base.concat(pex);
     }
     if (a.phase === "approach" && !a.win && a.closing && ph.watch) {
       return ph.watch.concat(ex("watch_extra"));
