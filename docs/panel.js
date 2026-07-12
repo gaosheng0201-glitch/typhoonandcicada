@@ -31,6 +31,8 @@ const ImpactPanel = (() => {
     situations: new Set(),
     antecedent: {},
     forecast: {},   // 数值模式逐小时预报（Open-Meteo），按坐标缓存
+    coastal: null,  // 沿海/海岛区县 → 外海暴露采样点（build_coastal.py 预存）
+    marine: {},     // 外海浪高逐小时（Open-Meteo Marine），按采样点缓存
     setupDone: false,
     open: false,
     step: "region",
@@ -46,6 +48,7 @@ const ImpactPanel = (() => {
       fetchJSON2("data/history.json").catch(() => null), // 历史档案缺失时降级
       fetchJSON2(`data/survival.json?t=${Date.now()}`).catch(() => null), // 应急手册
     ]);
+    P.coastal = await fetchJSON2(`data/coastal.json?t=${Date.now()}`).catch(() => ({})); // 沿海采样表，缺失降级
     restore();
     buildLocSelects();
     buildPersonaChips();
@@ -57,6 +60,7 @@ const ImpactPanel = (() => {
     });
     loadAntecedent();
     loadForecast();
+    loadMarine();
     loadMetar();
     if (P.setupDone) P.step = "result";
     showStep(P.step);
@@ -193,6 +197,7 @@ const ImpactPanel = (() => {
     persist();
     loadAntecedent();
     loadForecast();
+    loadMarine();
     renderBar();
     renderResult();
     // 通知地图更新「你」的位置标记——仅在用户真正设过位置后，避免首访者看到默认温州被标「你」
@@ -689,6 +694,64 @@ const ImpactPanel = (() => {
     } catch (e) { P.antecedent[key] = undefined; }
   }
 
+  /* ---------- 海浪（沿海/海岛）----------
+     远处台风的涌浪能杀死海钓、赶海、近海作业的人——本地风雨看着「没事」，海况却危险
+     （疯狗浪机制）。沿海地点用预存的外海暴露采样点查浪高，独立于风雨判定。 */
+  function seaKey() { return `${Math.round(P.loc.lat * 100)},${Math.round(P.loc.lng * 100)}`; }
+
+  async function loadMarine() {
+    if (!P.coastal) return;
+    const sea = P.coastal[seaKey()];
+    if (!sea) return;                    // 非沿海：无采样点
+    const mkey = `${sea[0]},${sea[1]}`;
+    const cached = P.marine[mkey];
+    if (cached === null) return;         // 请求进行中
+    if (cached && Date.now() - cached.at < 15 * 60e3) return;
+    P.marine[mkey] = null;
+    try {
+      const d = await fetchJSON2(
+        `https://marine-api.open-meteo.com/v1/marine?latitude=${sea[0]}&longitude=${sea[1]}` +
+        `&hourly=wave_height,wave_period,swell_wave_height&past_days=1&forecast_days=3&timezone=Asia%2FShanghai`);
+      P.marine[mkey] = {
+        at: Date.now(),
+        t: d.hourly.time.map((s) => new Date(s + ":00+08:00").getTime()),
+        wh: d.hourly.wave_height,
+        sw: d.hourly.swell_wave_height,
+        wp: d.hourly.wave_period,
+        sea,
+      };
+      renderResult();
+    } catch (e) { delete P.marine[mkey]; }
+  }
+
+  /* 海浪影响评估：取外海采样点 [now−6h, now+48h] 的峰值有效波高，按浪级 + 官方海浪预警分级。
+     返回 null=非沿海/无数据；{none:true}=浪不显著（<2.5m）。 */
+  function marineAssess() {
+    if (!P.coastal || !P.loc) return null;
+    const sea = P.coastal[seaKey()];
+    if (!sea) return null;
+    const m = P.marine[`${sea[0]},${sea[1]}`];
+    if (!m || !m.wh) return null;
+    const nowT = Date.now();
+    let peak = 0, peakT = null, peakPeriod = 0, cur = null, curSwell = null;
+    for (let i = 0; i < m.t.length; i++) {
+      if (m.t[i] >= nowT - 6 * 3.6e6 && m.t[i] <= nowT + 48 * 3.6e6) {
+        const w = m.wh[i] || 0;
+        if (w > peak) { peak = w; peakT = m.t[i]; peakPeriod = m.wp ? (m.wp[i] || 0) : 0; }
+      }
+      if (cur === null && m.t[i] >= nowT) { cur = m.wh[i] || 0; curSwell = m.sw ? (m.sw[i] || 0) : 0; }
+    }
+    peak = Math.round(peak * 10) / 10;
+    if (peak < 2.5) return { peak, none: true };
+    // 浪级（GB/T 波级）：大浪2.5–4 / 巨浪4–6 / 狂浪6–9 / 狂涛≥9
+    let tier, name;
+    if (peak >= 9) { tier = 4; name = "狂涛"; }
+    else if (peak >= 6) { tier = 3; name = "狂浪"; }
+    else if (peak >= 4) { tier = 2; name = "巨浪"; }
+    else { tier = 1; name = "大浪"; }
+    return { peak, peakT, peakPeriod, cur, curSwell, tier, name, sea };
+  }
+
   /* ---------- 结果渲染 ---------- */
 
   function renderResult() {
@@ -732,6 +795,23 @@ const ImpactPanel = (() => {
     } else {
       timeBrief = `台风最近距你约 ${Math.round(a.closest.dist)} km，预计不影响你所在区域`;
     }
+    // 海浪危险（沿海/海岛）：独立于风雨——即使判「不经过」，外海涌浪照样致命
+    const wave = marineAssess();
+    let waveBanner = "";
+    if (wave && !wave.none) {
+      const wc = ["", "#d6a94a", "#e0803c", "#e0625a", "#d0442c"][wave.tier];
+      const act = {
+        1: "涌浪会扑上岸边礁石、堤坝——别靠近海边礁石、消浪堤，海钓、赶海暂停",
+        2: "近岸涌浪危险——渔船回港、养殖排上岸，远离海边",
+        3: "涌浪掀翻小船、漫上岸堤——严禁出海，别去海边看浪、拍浪",
+        4: "极危——严禁一切出海与近岸活动，低矮海岸需撤离",
+      }[wave.tier];
+      const colorNote = wave.peak >= 14 ? "近海海浪红色级" : wave.peak >= 9 ? "近海海浪橙色级"
+        : wave.peak >= 6 ? "近海达海浪黄色级" : "";
+      waveBanner = `<div class="wave-warn" style="border-left-color:${wc}">
+        <b style="color:${wc}">🌊 外海约 ${wave.peak} m ${wave.name}${colorNote ? "（" + colorNote + "）" : ""}</b>
+        <span>${act}</span></div>`;
+    }
     box.innerHTML = `
       <div class="lv-badge lv-${globalLevel}"><b>${lv.name}</b>风险参考 · ${locLabel()}</div>
       ${results.length > 1 ? `<div class="timebrief" style="margin-top:3px">综合 ${results.length} 个台风/残涡系统的最高风险</div>` : ""}
@@ -739,6 +819,7 @@ const ImpactPanel = (() => {
       <div class="headline">${results.length > 1 ? `${s.name}：` : ""}${headlineFor(a)}</div>
       <div class="timebrief">${timeBrief} · 距 ${Math.round(haversine(P.loc.lat, P.loc.lng, last.lat, last.lng))} km</div>
       ${a.nowWx ? `<div class="timebrief">此刻本地：${nowWxDesc(a.nowWx)}<span class="muted">（${a.nowWx.obs ? `最近气象站 ${a.nowWx.distKm}km · ${a.nowWx.ageMin} 分钟前实测` : "模式实况，以体感为准"}）</span></div>` : ""}
+      ${waveBanner}
       ${s.active === false ? `<div class="slow-badge"><b>残余环流</b> —— 已停编，但残涡仍可能强降雨，雨的风险未结束</div>` : ""}
       ${a.slowMover ? `<div class="slow-badge"><b>停留型台风</b> —— 移速仅约 ${Math.round(a.moveKmh)} km/h，危险在雨不在风</div>` : ""}`;
     box.querySelectorAll(".storm-chip").forEach((b) => {

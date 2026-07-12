@@ -1,0 +1,27 @@
+# 建沿海采样表：为沿海/海岛区县预存「外海暴露采样点」，供海浪评估用。
+# 行政区划稳定，不需定时——手动触发即可（如增补 build_coastal.py 的沿海市白名单后重跑）。
+# 服务端跑，避开本机 Open-Meteo Marine 时额限制（白名单后约 3200 点，单次 <5000/时）。
+name: Build coastal sampling table
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build coastal.json
+        run: python3 -u fetcher/build_coastal.py
+      - name: Commit & push if changed
+        run: |
+          if ! git diff --quiet docs/data/coastal.json; then
+            git config user.name "typhoon-data-bot"
+            git config user.email "actions@users.noreply.github.com"
+            git add docs/data/coastal.json
+            git commit -m "data: 沿海采样表更新（build_coastal）"
+            git push
+          fi
