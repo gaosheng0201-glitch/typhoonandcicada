@@ -3,7 +3,9 @@
    评估是全局的：我的位置 × 所有台风/残涡，取最危险系统定档。 */
 const ImpactPanel = (() => {
   const SLOW_KMH = 18;
-  const WET_SOIL_MM = 150;
+  // 前期影响雨量法（官方山洪/地质灾害预警口径）：Pa=Σ Kⁱ·P，K 日退水系数；
+  // 土壤饱和度 w=min(1,Pa/Wm)，Wm 为土壤最大蓄水量。用于「动态临界雨量」——土越湿门槛越低。
+  const SOIL_K = 0.85, WM_SOIL_MM = 100, SOIL_DROP = 0.4;
 
   const LEVELS = {
     1: { name: "关注", tip: "留意后续预报即可" },
@@ -139,7 +141,7 @@ const ImpactPanel = (() => {
     const lv = LEVELS[top.a.level];
     const color = LV_STYLE[top.a.level].color;
     const brief = top.a.phase === "during" ? (top.a.easing ? " · 已过峰值，减弱中" : " · 影响进行中")
-      : top.a.phase === "after" ? (top.a.postRain24 >= 30 ? " · 已过境，雨未停" : " · 已过境")
+      : top.a.phase === "after" ? (top.a.relevant && top.a.postRain24 >= 30 ? " · 已过境，雨未停" : " · 已过境")
       : top.a.win && !top.a.win.open ? ` · ${fmtTime(top.a.win.endTs)}结束`
       : top.a.closing ? " · 靠近中，待观察" : "";
     bar.innerHTML = `
@@ -286,7 +288,7 @@ const ImpactPanel = (() => {
     }
     if (a.phase === "after") {
       // 按本地「实际」影响强度分 3 档：外围掠过 / 明显影响 / 正面重创
-      const tier = a.postRain24 >= 30 ? 3 : localImpactTier(a);
+      const tier = localImpactTier(a);
       const base = (tier >= 3 ? ph.after : tier === 2 ? (ph.after_mid || ph.after)
         : (ph.after_light || ph.after)) || [];
       // 人群专属恢复分档各有专属：擦肩而过给「恢复常态」，明显影响给中档善后，
@@ -300,14 +302,19 @@ const ImpactPanel = (() => {
     return checklistItems(a.level);
   }
 
-  /* 本地实际影响分档（1 外围掠过 / 2 明显影响 / 3 正面重创），
-     按真实落地的过程雨量、阵风峰值、后续降雨判定——不拿山洪滑坡吓没被淹的城市，
-     也不把重创说成外围掠过。三档让 2 档的模糊边界清晰化。 */
+  /* 本地实际影响分档（1 外围掠过·轻微 / 2 明显影响 / 3 正面重创）。
+     锚在国标：风臂用台风预警信号风级（阵风10级=黄「较重」→2档，12级=橙「严重」→3档）；
+     雨臂用降水量等级（大雨25→2档，大暴雨100→3档），并按「动态临界雨量」随土壤饱和度下调
+     ——土越湿门槛越低（前期影响雨量法）。残余降雨只有与台风相关时才计入，避免普通梅雨顶档。 */
   function localImpactTier(a) {
-    const g = a.peakGust ? a.peakGust.v : 0;   // km/h
-    const r = a.rain || 0, pr = a.postRain24 || 0;
-    if (r >= 120 || g >= 103 /* ~11级 */ || pr >= 40) return 3;
-    if (r >= 50 || g >= 75 /* ~9级 */ || pr >= 15) return 2;
+    const g = a.peakGust ? a.peakGust.v : 0;         // 峰值阵风 km/h
+    const w = a.soilW || 0;                          // 土壤饱和度 0..1
+    const thr2 = 25 * (1 - SOIL_DROP * w);           // 明显影响：大雨基准，湿土下调
+    const thr3 = 100 * (1 - SOIL_DROP * w);          // 正面重创：大暴雨基准，湿土下调
+    // 过程雨量 与「相关的」未来24h残余雨 取大者
+    const r = Math.max(a.rain || 0, a.relevant ? (a.postRain24 || 0) : 0);
+    if (r >= thr3 || g >= 118 /* 阵风12级·橙 */) return 3;
+    if (r >= thr2 || g >= 89 /* 阵风10级·黄 */) return 2;
     return 1;
   }
 
@@ -479,8 +486,11 @@ const ImpactPanel = (() => {
       if (fc && fc.points.length) fcEndTs = fc.points[fc.points.length - 1].time;
     }
 
+    const anteRec = P.antecedent[`${P.loc.lat},${P.loc.lng}`];
+    const soilW = (anteRec && typeof anteRec === "object") ? anteRec.w : 0;
+
     return { closest, galeR, galeREst, inRange, win, rain, rainSrc, peakRain, peakGust, phase, postRain24,
-             nowWx, easing, closing, fcEndTs,
+             nowWx, easing, closing, fcEndTs, relevant, soilW,
              level, moveKmh, slowMover, durationH, endPoint, stillInRangeAtEnd };
   }
 
@@ -498,7 +508,7 @@ const ImpactPanel = (() => {
   function headlineFor(a) {
     if (a.phase === "during") return a.easing ? "风雨已过峰值，正在减弱" : "风雨影响进行中，减少外出";
     if (a.phase === "after") {
-      if (a.postRain24 !== null && a.postRain24 >= 30)
+      if (a.relevant && a.postRain24 !== null && a.postRain24 >= 30)
         return "台风已过境，但雨还没停——警惕滞后内涝与山洪";
       const tier = localImpactTier(a);
       return tier >= 3 ? "台风已过境，恢复期注意安全"
@@ -655,8 +665,15 @@ const ImpactPanel = (() => {
       const d = await fetchJSON2(
         `https://api.open-meteo.com/v1/forecast?latitude=${P.loc.lat}&longitude=${P.loc.lng}` +
         `&daily=precipitation_sum&past_days=14&forecast_days=1&timezone=Asia%2FShanghai`);
-      P.antecedent[key] = Math.round((d.daily.precipitation_sum || [])
-        .filter((x) => x != null).reduce((a, b) => a + b, 0));
+      const series = (d.daily.precipitation_sum || []).map((x) => x || 0);
+      const ante = series.slice(0, -1);          // 去掉今天（预报日），只留前期
+      const sum14 = Math.round(ante.reduce((a, b) => a + b, 0));
+      // 前期影响雨量 Pa：越近的雨权重越高（Kⁱ 退水），最近一天 K¹，最早一天 K^n
+      let pa = 0; const n = ante.length;
+      for (let i = 0; i < n; i++) pa += Math.pow(SOIL_K, n - i) * ante[i];
+      pa = Math.round(pa);
+      const w = Math.min(1, pa / WM_SOIL_MM);    // 土壤饱和度 0..1
+      P.antecedent[key] = { sum14, pa, w };
       renderResult();
     } catch (e) { P.antecedent[key] = undefined; }
   }
@@ -746,10 +763,11 @@ const ImpactPanel = (() => {
     if (a.peakRain) tl.push([fmtTime(a.peakRain.ts.replace("T", " ")), `本地雨强峰值（约 ${Math.round(a.peakRain.v)} mm/h，模式预报）`]);
     if (a.peakGust) tl.push([fmtTime(a.peakGust.ts.replace("T", " ")), `本地阵风最强（约 ${gustLevel(a.peakGust.v)} 级，模式预报）`]);
     const ante = P.antecedent[`${P.loc.lat},${P.loc.lng}`];
-    if (ante != null) {
-      tl.push(["", ante >= WET_SOIL_MM
-        ? `过去两周已降 <b>${ante} mm</b> —— 雨将落在湿透的土地上，建议按上一档准备`
-        : `<span class="muted">过去两周已降 ${ante} mm（前期偏干）</span>`]);
+    if (ante && typeof ante === "object") {
+      const wetTxt = ante.w >= 0.6 ? "土壤接近饱和" : ante.w >= 0.35 ? "土壤偏湿" : "土壤偏干";
+      tl.push(["", ante.w >= 0.6
+        ? `过去两周已降 <b>${ante.sum14} mm</b>，${wetTxt}——同样的雨更易致涝，致灾门槛已按湿土下调`
+        : `<span class="muted">过去两周已降 ${ante.sum14} mm，${wetTxt}（前期影响雨量 ${ante.pa} mm）</span>`]);
     }
     document.querySelector("#d-timeline > div").innerHTML =
       tl.map(([t, x]) => `<div class="tl-row">${t ? `<span class="t">${t}</span>` : ""}<span>${x}</span></div>`).join("");
