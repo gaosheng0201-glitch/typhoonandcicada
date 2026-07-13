@@ -306,8 +306,7 @@ const ImpactPanel = (() => {
     P._ow = ws;
     if (!ws.length) return "";
     const c = WARN_COLOR[ws[0].color] || "#8a8";   // ws 已按级别降序，取最高
-    const label = ws.length > 1 ? `官方预警 ${ws.length}条` : `官方·${ws[0].type}`;
-    return `<div class="storm-chips ow-chips"><button class="chip storm-chip ow-chip" style="--owc:${c}">${label}</button></div><div class="ow-detail" hidden></div>`;
+    return `<div class="storm-chips ow-chips"><button class="chip storm-chip ow-chip" style="--owc:${c}">官方预警</button></div><div class="ow-detail" hidden></div>`;
   }
   function warnTime(w) {
     if (w.expires) return "有效至 " + warnExpiry(w.expires);
