@@ -307,7 +307,7 @@ const ImpactPanel = (() => {
     if (!ws.length) return "";
     const chips = ws.map((w, i) => {
       const c = WARN_COLOR[w.color] || "#8a8";
-      return `<button class="chip ow-chip" data-ow="${i}" style="--owc:${c}">官方·${w.type}<b style="color:${c}">${w.color}</b></button>`;
+      return `<button class="chip storm-chip ow-chip" data-ow="${i}" style="--owc:${c}">官方·${w.type}</button>`;
     }).join("");
     return `<div class="storm-chips ow-chips">${chips}</div><div class="ow-detail" hidden></div>`;
   }

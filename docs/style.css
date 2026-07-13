@@ -267,10 +267,10 @@ button, select, input { font-family: var(--serif); }
 /* 官方预警胶囊：与台风胶囊同级、同款，颜色（蓝黄橙红）标出级别。独立事实，点开看详情。 */
 .ow-chips { margin-top: 8px; }
 .ow-chip {
+  color: var(--ink-2);
   border-color: color-mix(in srgb, var(--owc) 50%, transparent);
   background: color-mix(in srgb, var(--owc) 10%, transparent);
 }
-.ow-chip b { margin-left: 3px; font-weight: 700; }
 .ow-chip.on {
   background: color-mix(in srgb, var(--owc) 20%, transparent);
   border-color: var(--owc);
