@@ -523,13 +523,36 @@ const ImpactPanel = (() => {
     if (rain >= 250 || (closest.dist < 100 && power >= 14)) level = 4;
     if (slowMover && closest.dist < wr) level = Math.max(level, 3);
 
-    // 阶段：来之前 / 影响进行中 / 已过境。过境 ≠ 结束——残余降雨单独判断（美莎克教训）
+    // 阶段：来之前 / 影响进行中 / 已过境。「过没过境」看台风中心此刻在不在你的影响半径内，
+    // 不是看本地雨窗停没停——弱台风贴着你走时雨可能暂歇，但它并没走（青岛市南教训）。
+    // 过境 ≠ 结束——残余降雨单独判断（美莎克教训）。
     const nowT = Date.now();
+    // 把「近实况 + 预报」时间线插值到 now，得到中心此刻位置、当前距离与趋势
+    const centerAt = (t) => {
+      const tl = path;
+      if (t <= ptime(tl[0])) return tl[0];
+      for (let i = 1; i < tl.length; i++) {
+        if (t <= ptime(tl[i])) {
+          const a = tl[i - 1], b = tl[i], t0 = ptime(a), t1 = ptime(b);
+          const f = t1 > t0 ? (t - t0) / (t1 - t0) : 0;
+          return { lat: a.lat + f * (b.lat - a.lat), lng: a.lng + f * (b.lng - a.lng),
+                   power: (parseInt(a.power) || 0) + f * ((parseInt(b.power) || 0) - (parseInt(a.power) || 0)) };
+        }
+      }
+      return tl[tl.length - 1];
+    };
+    const cNow = centerAt(nowT);
+    const dNow = haversine(P.loc.lat, P.loc.lng, cNow.lat, cNow.lng);
+    const cAh = centerAt(nowT + 3 * 3.6e6);
+    const dAhead = haversine(P.loc.lat, P.loc.lng, cAh.lat, cAh.lng);
+    const curRadius = TyphoonData.estGaleRadius(Math.round(cNow.power)) || wr;
+    const centerNear = dNow <= curRadius * 1.5;   // 中心仍在影响半径 1.5 倍内 = 仍在近旁
+    const receding = dAhead > dNow + 5;            // 3 小时后更远 = 正在远离
     let phase = "approach";
     if (win && nowT >= win.startT) {
-      // 「已过境」还要求台风最近点确已成过去——否则模式雨窗中途的空档会把「仍在最近点」误判成过境
-      const centerPassed = ptime(closest) < nowT;
-      phase = (win.open || nowT <= win.endT || !centerPassed) ? "during" : "after";
+      const centerGone = !centerNear && receding;       // 中心确已离开影响半径且在远离
+      const windowDone = !win.open && nowT > win.endT;   // 本地风雨窗也已结束
+      phase = (windowDone && centerGone) ? "after" : "during";
     }
     if (win) durationH = (win.endT - win.startT) / 3.6e6;
 
@@ -588,7 +611,7 @@ const ImpactPanel = (() => {
     const slowThreat = slowMover && closest.dist < wr;
 
     return { closest, galeR, galeREst, inRange, win, rain, rainSrc, peakRain, peakGust, phase, postRain24,
-             nowWx, easing, closing, fcEndTs, relevant, soilW,
+             nowWx, easing, closing, fcEndTs, relevant, soilW, dNow, centerNear,
              level, moveKmh, slowMover, slowThreat, durationH, endPoint, stillInRangeAtEnd };
   }
 
