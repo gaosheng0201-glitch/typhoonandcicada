@@ -112,7 +112,11 @@ function addLayers() {
   });
   map.addLayer({
     id: "track-lines", type: "line", source: "track-lines",
-    paint: { "line-color": ["get", "color"], "line-width": 2.5 },
+    paint: {
+      "line-color": ["get", "color"],
+      "line-width": ["case", ["get", "focus"], 2.5, 1.4],
+      "line-opacity": ["case", ["get", "focus"], 1, 0.5],
+    },
   });
   map.addLayer({
     id: "fc-lines", type: "line", source: "fc-lines",
@@ -136,13 +140,21 @@ function addLayers() {
     paint: {
       "circle-radius": ["case", ["get", "latest"], 7, 4],
       "circle-color": ["get", "color"],
+      "circle-opacity": ["case", ["get", "focus"], 1, 0.7],
       "circle-stroke-width": ["case", ["get", "latest"], 2, 0.5],
       "circle-stroke-color": "#ffffff",
+      "circle-stroke-opacity": ["case", ["get", "focus"], 1, 0.7],
     },
   });
 
+  // 点击台风点：若是另一个（非聚焦）台风，切换聚焦到它；否则弹出该点详情
+  map.on("click", "track-points", (e) => {
+    const f = e.features[0], tfid = f.properties.tfid;
+    if (tfid && tfid !== state.selected) { loadStorm(tfid, /*fit=*/ false); return; }
+    showPopup(f, e.lngLat);
+  });
+  map.on("click", "fc-points", (e) => showPopup(e.features[0], e.lngLat));
   for (const layer of ["track-points", "fc-points"]) {
-    map.on("click", layer, (e) => showPopup(e.features[0], e.lngLat));
     map.on("mouseenter", layer, () => (map.getCanvas().style.cursor = "pointer"));
     map.on("mouseleave", layer, () => (map.getCanvas().style.cursor = ""));
   }
@@ -190,55 +202,58 @@ async function loadStorm(tfid, fit = true) {
 /* ---------- drawing ---------- */
 
 function draw() {
-  const s = state.storm;
-  if (!s || !map.getSource("track-lines")) return; // 地图未就绪时跳过，load 回调里会补画
+  if (!map.getSource("track-lines")) return; // 地图未就绪时跳过，load 回调里会补画
+  const focusId = state.selected;
+  const stormsMap = state.allStorms ||
+    (state.storm ? { [state.storm.tfid]: state.storm } : {});
+  // 全部活跃台风同屏：非聚焦排前、聚焦排后（后画的叠在上层）
+  const list = Object.values(stormsMap)
+    .sort((a, b) => (a.tfid === focusId ? 1 : 0) - (b.tfid === focusId ? 1 : 0));
+  if (!list.length) return;
 
-  const trackLines = [];
-  for (let i = 1; i < s.track.length; i++) {
-    const a = s.track[i - 1], b = s.track[i];
-    trackLines.push(feature("LineString", [[a.lng, a.lat], [b.lng, b.lat]], {
-      color: intensityColor(b.strong),
-    }));
-  }
+  const trackLines = [], trackPoints = [], fcLines = [], fcPoints = [], windCircles = [];
 
-  const trackPoints = s.track.map((p, i) => feature("Point", [p.lng, p.lat], {
-    color: intensityColor(p.strong),
-    latest: i === s.track.length - 1,
-    title: `${s.name} ${s.enName}`,
-    time: p.time,
-    strong: p.strong,
-    power: p.power,
-    speed: p.speed,
-    pressure: p.pressure,
-    kind: "obs",
-  }));
+  for (const s of list) {
+    const isFocus = s.tfid === focusId;
 
-  const fcLines = [], fcPoints = [];
-  for (const [agency, fc] of Object.entries(s.forecasts)) {
-    if (state.hiddenAgencies.has(agency)) continue;
-    const color = AGENCY_COLORS[agency] || AGENCY_FALLBACK;
-    const coords = fc.points.map((p) => [p.lng, p.lat]);
-    if (coords.length > 1) fcLines.push(feature("LineString", coords, { color }));
-    for (const p of fc.points.slice(1)) {
-      fcPoints.push(feature("Point", [p.lng, p.lat], {
-        color,
-        title: `${agency}预报`,
-        time: p.time,
-        strong: p.strong,
-        power: p.power,
-        speed: p.speed,
-        pressure: p.pressure,
-        kind: "fc",
+    for (let i = 1; i < s.track.length; i++) {
+      const a = s.track[i - 1], b = s.track[i];
+      trackLines.push(feature("LineString", [[a.lng, a.lat], [b.lng, b.lat]], {
+        color: intensityColor(b.strong), focus: isFocus,
       }));
     }
-  }
 
-  // 上游常在台风减弱后停发风圈半径——先回退最近带半径的点，再降级为按强度估算
-  const last = s.track[s.track.length - 1];
-  const rp = radiusForDisplay(s.track);
-  const windCircles = last && rp
-    ? windQuadrants({ ...rp, lat: last.lat, lng: last.lng })
-    : [];
+    // 聚焦台风：整条路径的点；其余：只画当前位置一个点（带名字、可点击切换聚焦）
+    const pts = isFocus ? s.track : [s.track[s.track.length - 1]];
+    for (const p of pts) {
+      trackPoints.push(feature("Point", [p.lng, p.lat], {
+        color: intensityColor(p.strong),
+        latest: p === s.track[s.track.length - 1],
+        focus: isFocus, tfid: s.tfid,
+        title: `${s.name} ${s.enName}`, time: p.time, strong: p.strong,
+        power: p.power, speed: p.speed, pressure: p.pressure, kind: "obs",
+      }));
+    }
+
+    // 预报扇面与风圈只画聚焦台风——多台风时全画会糊成一团
+    if (!isFocus) continue;
+    for (const [agency, fc] of Object.entries(s.forecasts)) {
+      if (state.hiddenAgencies.has(agency)) continue;
+      const color = AGENCY_COLORS[agency] || AGENCY_FALLBACK;
+      const coords = fc.points.map((p) => [p.lng, p.lat]);
+      if (coords.length > 1) fcLines.push(feature("LineString", coords, { color }));
+      for (const p of fc.points.slice(1)) {
+        fcPoints.push(feature("Point", [p.lng, p.lat], {
+          color, title: `${agency}预报`, time: p.time, strong: p.strong,
+          power: p.power, speed: p.speed, pressure: p.pressure, kind: "fc",
+        }));
+      }
+    }
+    // 上游常在台风减弱后停发风圈半径——先回退最近带半径的点，再降级为按强度估算
+    const last = s.track[s.track.length - 1];
+    const rp = radiusForDisplay(s.track);
+    if (last && rp) windCircles.push(...windQuadrants({ ...rp, lat: last.lat, lng: last.lng }));
+  }
 
   setData("track-lines", trackLines);
   setData("track-points", trackPoints);
@@ -304,7 +319,13 @@ function fitToStorm() {
   for (const fc of Object.values(s.forecasts)) {
     for (const p of fc.points) bounds.extend([p.lng, p.lat]);
   }
-  if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 80 });
+  // 纳入其它活跃台风的当前位置——首屏就能看到「有几个台风、都在哪」
+  for (const o of Object.values(state.allStorms || {})) {
+    if (o.tfid === s.tfid || !o.track.length) continue;
+    const last = o.track[o.track.length - 1];
+    bounds.extend([last.lng, last.lat]);
+  }
+  if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 80, maxZoom: 7 });
 }
 
 function showPopup(f, lngLat) {
