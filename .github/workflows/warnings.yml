@@ -1,0 +1,35 @@
+# 定时抓取中国官方气象预警（中国气象局，经 WMO 恶劣天气信息中心公开中继）。
+# feed 声明 public domain，合规可转载、无需 key。见 fetcher/fetch_warnings.py。
+# 每 10 分钟一次：与预警时效匹配，又不过于频繁。
+name: Update official warnings
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # 每 10 分钟
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# 避免与 update-data.yml（每 30 分钟）并发 push docs/data 撞车
+concurrency:
+  group: push-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch official warnings
+        run: python3 -u fetcher/fetch_warnings.py
+      - name: Commit & push if changed
+        run: |
+          if ! git diff --quiet docs/data/warnings.json; then
+            git config user.name "typhoon-data-bot"
+            git config user.email "actions@users.noreply.github.com"
+            git add docs/data/warnings.json
+            git commit -m "data: 自动更新官方预警（WMO CAP 中继）"
+            git pull --rebase --autostash
+            git push
+          fi

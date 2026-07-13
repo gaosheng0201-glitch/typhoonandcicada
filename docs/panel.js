@@ -49,6 +49,9 @@ const ImpactPanel = (() => {
       fetchJSON2(`data/survival.json?t=${Date.now()}`).catch(() => null), // 应急手册
     ]);
     P.coastal = await fetchJSON2(`data/coastal.json?t=${Date.now()}`).catch(() => ({})); // 沿海采样表，缺失降级
+    P.adcodes = await fetchJSON2("data/adcodes.json").catch(() => ({}));                  // adcode→中文名（同源 DataV）
+    P.warnings = await fetchJSON2(`data/warnings.json?t=${Date.now()}`).catch(() => null); // 官方预警生效集，缺失降级
+    buildAdcodeIndex();
     restore();
     buildLocSelects();
     buildPersonaChips();
@@ -234,6 +237,85 @@ const ImpactPanel = (() => {
 
   function locLabel() {
     return P.loc.district || P.loc.city || P.loc.province;
+  }
+
+  /* ---------- 官方预警（中国气象局，经 WMO 公开中继） ---------- */
+
+  // adcode 编码层级：省 xx0000 / 市州 xxyy00 / 区县 其它。据此建「名字→adcode」索引消歧。
+  function buildAdcodeIndex() {
+    const idx = { prov: {}, byName: {} };
+    for (const [ad, name] of Object.entries(P.adcodes || {})) {
+      if (ad.length !== 6) continue;
+      if (ad.endsWith("0000")) idx.prov[name] = ad.slice(0, 2); // 省名→2位前缀
+      (idx.byName[name] = idx.byName[name] || []).push(ad);
+    }
+    P.adcodeIdx = idx;
+  }
+
+  // 由用户选择（省/市/区县名）解析出 adcode——用省前缀 + 层级位约束消歧
+  function resolveAdcode() {
+    const idx = P.adcodeIdx;
+    if (!idx) return null;
+    const pp = idx.prov[P.loc.province];
+    if (!pp) return null;
+    const pick = (name, kind) => {
+      const cands = (idx.byName[name] || []).filter((ad) => ad.startsWith(pp) &&
+        (kind === "dist" ? !ad.endsWith("00") : ad.endsWith("00") && !ad.endsWith("0000")));
+      return cands[0] || null;
+    };
+    if (P.loc.district) return pick(P.loc.district, "dist") || pick(P.loc.city, "city");
+    if (P.loc.city) return pick(P.loc.city, "city");
+    return pp + "0000";
+  }
+
+  const WARN_COLOR = { "蓝色": "#3b82c4", "黄色": "#d8b23a", "橙色": "#e0803c", "红色": "#d0442c" };
+  const WARN_RANK = { "红色": 4, "橙色": 3, "黄色": 2, "蓝色": 1, "": 0 };
+
+  // 匹配用户所在地的生效官方预警：本区县 + 上级市 + 省，按等级去重排序
+  function officialWarnings() {
+    if (!P.warnings || !P.warnings.warnings) return [];
+    const ad = resolveAdcode();
+    if (!ad) return [];
+    const keys = [ad, ad.slice(0, 4) + "00", ad.slice(0, 2) + "0000"];
+    const seen = new Set(), out = [];
+    for (const k of keys) {
+      for (const w of (P.warnings.warnings[k] || [])) {
+        const sig = w.type + w.color;
+        if (seen.has(sig)) continue;
+        seen.add(sig);
+        out.push(w);
+      }
+    }
+    out.sort((a, b) => (WARN_RANK[b.color] || 0) - (WARN_RANK[a.color] || 0));
+    return out;
+  }
+
+  function warnExpiry(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (isNaN(d)) return "";
+    const mm = String(d.getMonth() + 1).padStart(2, "0"), dd = String(d.getDate()).padStart(2, "0");
+    const hh = String(d.getHours()).padStart(2, "0"), mi = String(d.getMinutes()).padStart(2, "0");
+    return `${mm}-${dd} ${hh}:${mi}`;
+  }
+
+  // 小 tag：贴着我们的「预计」放，不抢戏。点开在下方列出各条等级与失效时间。
+  function officialTagHtml() {
+    const ws = officialWarnings();
+    if (!ws.length) return "";
+    const top = ws[0], c = WARN_COLOR[top.color] || "#8a8";
+    const more = ws.length > 1 ? ` +${ws.length - 1}` : "";
+    return `<span class="ow-tag" style="--owc:${c}" title="官方预警，以气象部门发布为准，点击展开"><b>官方·${top.type}${top.color}预警${more}</b></span>`;
+  }
+  function officialDetailHtml() {
+    const ws = officialWarnings();
+    if (!ws.length) return "";
+    const detail = ws.map((w) => {
+      const cc = WARN_COLOR[w.color] || "#8a8";
+      const exp = warnExpiry(w.expires);
+      return `<div class="ow-item"><i style="background:${cc}"></i>${w.type}${w.color}预警<span class="ow-lv">${w.level || ""}</span>${exp ? `<span class="ow-exp">至 ${exp}</span>` : ""}</div>`;
+    }).join("");
+    return `<div class="ow-detail" hidden>${detail}<div class="ow-src">来源：中国气象局 · 经 WMO 恶劣天气信息中心公开中继 · 以官方发布为准</div></div>`;
   }
 
   /* ---------- 人群与环境 ---------- */
@@ -811,7 +893,8 @@ const ImpactPanel = (() => {
       waveBanner = `<div class="wave-warn" style="border-left-color:${wc}"><b style="color:${wc}">外海约 ${wave.peak} m ${wave.name}${colorNote ? "（" + colorNote + "）" : ""}</b>：${act}</div>`;
     }
     box.innerHTML = `
-      <div class="lv-badge lv-${globalLevel}"><b>${lv.name}</b>风险参考 · ${locLabel()}</div>
+      <div class="lv-badge lv-${globalLevel}"><b>${lv.name}</b>风险参考 · ${locLabel()}${officialTagHtml()}</div>
+      ${officialDetailHtml()}
       ${results.length > 1 ? `<div class="timebrief" style="margin-top:3px">综合 ${results.length} 个台风/残涡系统的最高风险</div>` : ""}
       ${multiRow}
       <div class="headline">${results.length > 1 ? `${s.name}：` : ""}${headlineFor(a)}</div>
@@ -823,6 +906,8 @@ const ImpactPanel = (() => {
     box.querySelectorAll(".storm-chip").forEach((b) => {
       b.onclick = () => { P.focusTfid = b.dataset.tf; renderResult(); };
     });
+    const owTag = box.querySelector(".ow-tag"), owDetail = box.querySelector(".ow-detail");
+    if (owTag && owDetail) owTag.onclick = () => { owDetail.hidden = !owDetail.hidden; };
 
     // 时间线（区分已发生/未发生；时间窗来自本地逐时天气序列，几何仅回退）
     const nowT = Date.now();

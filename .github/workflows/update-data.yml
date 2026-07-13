@@ -14,6 +14,11 @@ on:
 permissions:
   contents: write
 
+# 与 warnings.yml（每 10 分钟）共用组，避免并发 push docs/data 撞车
+concurrency:
+  group: push-data
+  cancel-in-progress: false
+
 jobs:
   update:
     runs-on: ubuntu-latest
