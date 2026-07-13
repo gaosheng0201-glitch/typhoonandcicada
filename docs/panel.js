@@ -299,17 +299,20 @@ const ImpactPanel = (() => {
     return `${mm}-${dd} ${hh}:${mi}`;
   }
 
-  // 官方预警做成与台风同级的独立胶囊——有台风时用户自然关联，没有时就是一条独立警告。
-  // 点开看那条警告的详情。我们只转达、不替官方归因。
+  // 官方预警合并成一个与台风同级的独立胶囊（颜色取最高级别）——有台风时用户自然
+  // 关联，没有时就是一条独立警告。点开列出各条：类型、级别、时效。只转达、不归因。
   function officialChipsHtml() {
     const ws = officialWarnings();
     P._ow = ws;
     if (!ws.length) return "";
-    const chips = ws.map((w, i) => {
-      const c = WARN_COLOR[w.color] || "#8a8";
-      return `<button class="chip storm-chip ow-chip" data-ow="${i}" style="--owc:${c}">官方·${w.type}</button>`;
-    }).join("");
-    return `<div class="storm-chips ow-chips">${chips}</div><div class="ow-detail" hidden></div>`;
+    const c = WARN_COLOR[ws[0].color] || "#8a8";   // ws 已按级别降序，取最高
+    const label = ws.length > 1 ? `官方预警 ${ws.length}条` : `官方·${ws[0].type}`;
+    return `<div class="storm-chips ow-chips"><button class="chip storm-chip ow-chip" style="--owc:${c}">${label}</button></div><div class="ow-detail" hidden></div>`;
+  }
+  function warnTime(w) {
+    if (w.expires) return "有效至 " + warnExpiry(w.expires);
+    if (w.issued) return "发布 " + warnExpiry(w.issued);
+    return "";
   }
 
   /* ---------- 人群与环境 ---------- */
@@ -904,23 +907,20 @@ const ImpactPanel = (() => {
     box.querySelectorAll(".storm-chip").forEach((b) => {
       b.onclick = () => { P.focusTfid = b.dataset.tf; renderResult(); };
     });
-    const owDetail = box.querySelector(".ow-detail");
-    box.querySelectorAll(".ow-chip").forEach((b) => {
-      b.onclick = () => {
-        const w = (P._ow || [])[+b.dataset.ow];
-        if (!w || !owDetail) return;
-        const on = b.classList.contains("on");
-        box.querySelectorAll(".ow-chip").forEach((x) => x.classList.remove("on"));
-        if (on) { owDetail.hidden = true; return; }
-        b.classList.add("on");
-        const exp = warnExpiry(w.expires);
-        owDetail.innerHTML = `<div class="ow-line"><b>${w.type}${w.color}预警</b>` +
+    const owBtn = box.querySelector(".ow-chip"), owDetail = box.querySelector(".ow-detail");
+    if (owBtn && owDetail) owBtn.onclick = () => {
+      const on = owBtn.classList.toggle("on");
+      if (!on) { owDetail.hidden = true; return; }
+      const rows = (P._ow || []).map((w) => {
+        const cc = WARN_COLOR[w.color] || "#8a8", t = warnTime(w);
+        return `<div class="ow-item"><i style="background:${cc}"></i>${w.type}${w.color}预警` +
           `<span class="ow-lv">${w.level ? w.level + " 级" : ""}</span>` +
-          `${exp ? `<span class="ow-exp">有效至 ${exp}</span>` : ""}</div>` +
-          `<div class="ow-src">来源：中国气象局 · 经 WMO 恶劣天气信息中心公开中继 · 以官方发布为准</div>`;
-        owDetail.hidden = false;
-      };
-    });
+          `${t ? `<span class="ow-exp">${t}</span>` : ""}</div>`;
+      }).join("");
+      owDetail.innerHTML = rows +
+        `<div class="ow-src">来源：中国气象局 · 经 WMO 恶劣天气信息中心公开中继 · 以官方发布为准</div>`;
+      owDetail.hidden = false;
+    };
 
     // 时间线（区分已发生/未发生；时间窗来自本地逐时天气序列，几何仅回退）
     const nowT = Date.now();

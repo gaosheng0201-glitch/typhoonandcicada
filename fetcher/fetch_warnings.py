@@ -161,6 +161,7 @@ def main():
         merged[k] = {
             "adcode": x["adcode"], "type": x["type"], "color": color,
             "level": COLOR_LEVEL.get(color, ""),
+            "issued": iso(x["_pub"]),          # 发布时间：无失效时间时用它兜底
             "expires": iso(x["expires"]),
             "name": names.get(x["adcode"]) or x["area_en"],
         }
