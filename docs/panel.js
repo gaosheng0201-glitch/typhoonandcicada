@@ -974,15 +974,18 @@ const ImpactPanel = (() => {
     lastCardName = `台风应急手册-${locLabel()}`;
     const { focus } = assessAll();
     const storm = focus ? focus.s.name : "";
-    const W = 760, PAD = 40, CW = W - PAD * 2, SCALE = 2;
+    const W = 780, PAD = 44, CW = W - PAD * 2, SCALE = 2;
     const LC = { green: "#7cbf6b", amber: "#ea8640", red: "#e46b60" };
-    const LH = 32;                                 // 正文行高
-    const IND = 24;                                // 项目缩进
+    const LH = 38;                                 // 正文行高（放松）
+    const IND = 28;                                // 项目缩进
+    const BODY = 24;                               // 正文字号
     const canvas = document.getElementById("share-canvas");
     const ctx = canvas.getContext("2d");
-    const F = (w, px) => `${w} ${px}px Georgia, "Songti SC", "STSong", "SimSun", serif`;
+    // 正文用黑体（小字号更清楚），标题/序号用衷线（有性格）
+    const FB = (w, px) => `${w} ${px}px -apple-system, "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif`;
+    const FD = (w, px) => `${w} ${px}px Georgia, "Songti SC", "STSong", "SimSun", serif`;
 
-    const lines = (text, font, maxW) => {         // 折行行数
+    const lines = (text, font, maxW) => {
       ctx.font = font;
       let line = "", n = 0;
       for (const ch of text) {
@@ -1000,132 +1003,120 @@ const ImpactPanel = (() => {
       if (line) ctx.fillText(line, x, cy);
       return cy + lh;
     };
-    const bulletH = (it) => lines(it, F(400, 22), CW - IND - 10) * LH + 7;
+    const bulletH = (it) => lines(it, FB(400, BODY), CW - IND - 12) * LH + 11;
 
     const pex = m.persona_extra[P.persona];
 
     // ── 测高 pass ──
-    let H = 40;
-    H += 50 + 28;                                          // 标题 + kicker
-    H += lines(m.intro, F(400, 18), CW) * 25 + 18;         // 引言
-    H += 14 + m.principles.length * 37 + 10 + 26;          // 三原则盒
-    // 判断严重程度
-    H += 40;
-    for (const r of m.locate.rows) H += lines(r.state, F(700, 19), CW - 52) * 26 + 24 + 12;
-    H += 16;
-    // 分级行动
+    let H = 46;
+    H += 56 + 34;
+    H += lines(m.intro, FB(400, 19), CW) * 29 + 22;
+    H += 16 + m.principles.length * 42 + 12 + 30;
+    H += 44;
+    for (const r of m.locate.rows) H += lines(r.state, FB(500, 20), CW - 56) * 29 + 28 + 14;
+    H += 18;
     for (const t of m.tiers) {
-      H += 42 + lines(t.sub, F(400, 17), CW - 52) * 23 + 8;
+      H += 48 + lines(t.sub, FB(400, 18), CW - 56) * 26 + 10;
       for (const it of t.items) H += bulletH(it);
-      H += 20;
+      H += 26;
     }
-    // 参考段
     for (const ref of m.refs) {
-      H += 36;
+      H += 42;
       for (const it of ref.items) H += bulletH(it);
-      H += 14;
+      H += 18;
     }
-    if (pex) H += 24 + lines(pex, F(600, 22), CW - 32) * LH + 26;
-    H += 16 + lines(m.footer, F(400, 17), CW) * 25 + 30;
+    if (pex) H += 28 + lines(pex, FB(500, 22), CW - 36) * LH + 30;
+    H += 20 + lines(m.footer, FB(400, 15), CW) * 23 + 40;
 
     canvas.width = W * SCALE; canvas.height = H * SCALE;
     ctx.scale(SCALE, SCALE);
 
     // ── 绘制 pass ──
-    roundRect(ctx, 0, 0, W, H, 28); ctx.clip();
+    roundRect(ctx, 0, 0, W, H, 30); ctx.clip();
     const bg = ctx.createLinearGradient(0, 0, 0, H);
     bg.addColorStop(0, "#25231f"); bg.addColorStop(1, "#1a1916");
     ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
 
-    // 圆角方形序号徽章
     const badge = (x, cyTop, n, color, s) => {
-      ctx.fillStyle = color; roundRect(ctx, x, cyTop, s, s, 6); ctx.fill();
-      ctx.fillStyle = "#1a1916"; ctx.font = F(800, s - 8); ctx.textAlign = "center";
+      ctx.fillStyle = color; roundRect(ctx, x, cyTop, s, s, 7); ctx.fill();
+      ctx.fillStyle = "#1a1916"; ctx.font = FD(800, s - 8); ctx.textAlign = "center";
       ctx.fillText(n, x + s / 2, cyTop + s - Math.round(s * 0.28));
       ctx.textAlign = "left";
     };
     const bullet = (it, y, color) => {
       ctx.fillStyle = color; ctx.beginPath();
-      ctx.arc(PAD + 6, y - 7, 3, 0, 7); ctx.fill();
-      return wrap(it, PAD + IND, y, F(400, 22), CW - IND - 10, LH, "#dcd8cf") + 7;
+      ctx.arc(PAD + 7, y - 8, 3.2, 0, 7); ctx.fill();
+      return wrap(it, PAD + IND, y, FB(400, BODY), CW - IND - 12, LH, "#e3dfd5") + 11;
     };
 
-    let y = 62;
+    let y = 66;
     ctx.textAlign = "left";
-    ctx.fillStyle = "#eeece6"; ctx.font = F(800, 38);
-    ctx.fillText(m.title, PAD, y); y += 28;
-    ctx.fillStyle = "#ea8640"; ctx.font = F(600, 18);
-    ctx.fillText(`${locLabel()}${storm ? " · " + storm : ""} · ${m.kicker}`, PAD, y); y += 26;
-    y = wrap(m.intro, PAD, y, F(400, 18), CW, 25, "#aaa69f") + 4;
+    ctx.fillStyle = "#efece6"; ctx.font = FD(800, 40);
+    ctx.fillText(m.title, PAD, y); y += 32;
+    ctx.fillStyle = "#ea8640"; ctx.font = FB(600, 18);
+    ctx.fillText(`${locLabel()}${storm ? " · " + storm : ""} · ${m.kicker}`, PAD, y); y += 30;
+    y = wrap(m.intro, PAD, y, FB(400, 19), CW, 29, "#b3ad9f") + 6;
 
-    // 三原则盒
-    const boxTop = y, boxH = 14 + m.principles.length * 37 + 6;
+    const boxTop = y, boxH = 16 + m.principles.length * 42 + 8;
     ctx.fillStyle = "rgba(234,134,64,0.10)";
     roundRect(ctx, PAD, boxTop, CW, boxH, 12); ctx.fill();
     ctx.strokeStyle = "#ea8640"; ctx.lineWidth = 1.5;
     roundRect(ctx, PAD, boxTop, CW, boxH, 12); ctx.stroke();
-    let py = boxTop + 38;
+    let py = boxTop + 42;
     m.principles.forEach((pr, i) => {
-      ctx.fillStyle = "#ea8640"; ctx.font = F(800, 24);
-      ctx.fillText(`${i + 1}`, PAD + 18, py);
-      ctx.fillStyle = "#eeece6"; ctx.font = F(700, 22);
-      ctx.fillText(pr, PAD + 46, py);
-      py += 37;
+      ctx.fillStyle = "#ea8640"; ctx.font = FD(800, 26);
+      ctx.fillText(`${i + 1}`, PAD + 20, py);
+      ctx.fillStyle = "#efece6"; ctx.font = FB(700, 22);
+      ctx.fillText(pr, PAD + 50, py);
+      py += 42;
     });
-    y = boxTop + boxH + 26;
+    y = boxTop + boxH + 30;
 
-    // 判断严重程度（对号入座）
-    ctx.fillStyle = "#eeece6"; ctx.font = F(800, 22);
-    ctx.fillText(m.locate.h, PAD, y); y += 34;
+    ctx.fillStyle = "#efece6"; ctx.font = FD(800, 24);
+    ctx.fillText(m.locate.h, PAD, y); y += 38;
     for (const r of m.locate.rows) {
       const c = LC[r.level];
-      badge(PAD, y - 15, r.n, c, 22);
-      const yA = wrap(r.state, PAD + 34, y, F(700, 19), CW - 52, 26, "#eeece6");
-      ctx.fillStyle = c; ctx.font = F(800, 18);
-      ctx.fillText(`→ ${r.act}`, PAD + 34, yA + 2);
-      y = yA + 24 + 12;
+      badge(PAD, y - 17, r.n, c, 24);
+      const yA = wrap(r.state, PAD + 38, y, FB(500, 20), CW - 56, 29, "#efece6");
+      ctx.fillStyle = c; ctx.font = FB(700, 19);
+      ctx.fillText(`→ ${r.act}`, PAD + 38, yA + 3);
+      y = yA + 28 + 14;
     }
-    y += 16;
+    y += 18;
 
-    // ①②③ 分级行动
     for (const t of m.tiers) {
-      const c = LC[t.level], top = y - 26;
-      badge(PAD, y - 22, t.n, c, 30);
-      ctx.fillStyle = c; ctx.font = F(800, 24);
-      ctx.fillText(t.h, PAD + 42, y); y += 24;
-      ctx.fillStyle = "#8f8b83";
-      y = wrap(t.sub, PAD + 42, y, F(400, 17), CW - 52, 23, "#8f8b83") + 8;
+      const c = LC[t.level];
+      badge(PAD, y - 24, t.n, c, 32);
+      ctx.fillStyle = c; ctx.font = FD(800, 26);
+      ctx.fillText(t.h, PAD + 46, y); y += 26;
+      y = wrap(t.sub, PAD + 46, y, FB(400, 18), CW - 56, 26, "#9a958c") + 10;
       const listTop = y;
       for (const it of t.items) y = bullet(it, y, c);
-      // 该档左侧的细色条：从徽章顶到最后一项
       ctx.fillStyle = c; ctx.globalAlpha = 0.5;
-      ctx.fillRect(PAD + 13, listTop - 4, 2, y - listTop - 3);
+      ctx.fillRect(PAD + 15, listTop - 5, 2, y - listTop - 4);
       ctx.globalAlpha = 1;
-      y += 20;
+      y += 26;
     }
 
-    // 参考段（求救号 / 撑几天 / 风雨后）
     for (const ref of m.refs) {
-      ctx.fillStyle = "#eeb28f"; ctx.font = F(800, 20);
-      ctx.fillText(ref.h, PAD, y); y += 30;
+      ctx.fillStyle = "#eeb28f"; ctx.font = FD(800, 22);
+      ctx.fillText(ref.h, PAD, y); y += 34;
       for (const it of ref.items) y = bullet(it, y, "#c9a961");
-      y += 14;
+      y += 18;
     }
 
-    // 人群专属
     if (pex) {
-      const bT = y, bH = 14 + lines(pex, F(600, 22), CW - 32) * LH + 6;
+      const bT = y, bH = 16 + lines(pex, FB(500, 22), CW - 36) * LH + 8;
       ctx.fillStyle = "rgba(201,169,97,0.12)";
-      roundRect(ctx, PAD, bT, CW, bH, 10); ctx.fill();
-      ctx.fillStyle = "#c9a961"; ctx.font = F(700, 15);
-      ctx.fillText(`给「${(P.checklists.personas.find((p) => p.id === P.persona) || {}).name || "你"}」的一句`, PAD + 16, bT + 26);
-      wrap(pex, PAD + 16, bT + 50, F(600, 22), CW - 32, LH, "#eeece6");
-      y = bT + bH + 26;
+      roundRect(ctx, PAD, bT, CW, bH, 12); ctx.fill();
+      ctx.fillStyle = "#c9a961"; ctx.font = FB(600, 16);
+      ctx.fillText(`给「${(P.checklists.personas.find((p) => p.id === P.persona) || {}).name || "你"}」的一句`, PAD + 18, bT + 30);
+      wrap(pex, PAD + 18, bT + 56, FB(500, 22), CW - 36, LH, "#efece6");
+      y = bT + bH + 30;
     }
 
-    // 页脚
     ctx.fillStyle = "#76726a"; ctx.textAlign = "center";
-    wrap(m.footer, W / 2, y + 12, F(400, 17), CW, 25, "#76726a");
+    wrap(m.footer, W / 2, y + 14, FB(400, 15), CW, 23, "#76726a");
     ctx.textAlign = "left";
 
     document.getElementById("share-modal").style.display = "flex";
