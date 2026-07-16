@@ -51,6 +51,7 @@ const ImpactPanel = (() => {
     P.coastal = await fetchJSON2(`data/coastal.json?t=${Date.now()}`).catch(() => ({})); // 沿海采样表，缺失降级
     P.adcodes = await fetchJSON2("data/adcodes.json").catch(() => ({}));                  // adcode→中文名（同源 DataV）
     P.warnings = await fetchJSON2(`data/warnings.json?t=${Date.now()}`).catch(() => null); // 官方预警生效集，缺失降级
+    P.impact = await fetchJSON2(`data/impact.json?t=${Date.now()}`).catch(() => null);     // AI 多期会商（FNV3 滞后集合），缺失降级
     buildAdcodeIndex();
     restore();
     buildLocSelects();
@@ -859,6 +860,40 @@ const ImpactPanel = (() => {
 
   /* ---------- 结果渲染 ---------- */
 
+  /* AI 多期会商（FNV3 滞后集合，build_impact.py 产出）：
+     收敛度=最近几期预报吵不吵架；城市命中=最近 N 期里几期波及本市。
+     「还看不准」本身就是要交付的信息，与官方预警并列参考，不替官方下结论。 */
+  function aiConsensusHtml(s) {
+    if (!P.impact || !P.impact.storms) return "";
+    // 新鲜度保护：产出流水线若断更（正常每 6h 一轮），过期结论宁可不说
+    if (Date.now() - Date.parse(P.impact.updated) > 24 * 3600e3) return "";
+    const st = P.impact.storms.find((x) => x.tfid === s.tfid);
+    if (!st || st.stale) return "";
+    const CONV = {
+      converged: ["#7fae72", "各期已高度一致"],
+      converging: ["#d6a94a", "趋于一致"],
+      divergent: ["#e0803c", "各期分歧仍大"],
+    };
+    const conv = st.convergence || {};
+    const cv = CONV[conv.state];
+    const convLine = cv
+      ? `<b style="color:${cv[0]}">${cv[1]}</b>${conv.spreadKm ? `<span class="muted">（近3期路径散布约 ${conv.spreadKm} km）</span>` : ""}${conv.trend > 1.4 ? "，最近几期分歧反而加大" : conv.trend < 0.7 ? "，分歧正在收窄" : ""}`
+      : `<span class="muted">${conv.text || "预报期数不足，暂无法评估一致性"}</span>`;
+    const city = (st.cities || []).find((x) => x.city === P.loc.city);
+    let cityLine;
+    if (city) {
+      const LV = { high: "#e0625a", medium: "#d6a94a", low: "#8a8578" };
+      cityLine = `最近 ${city.of} 期预报中 <b style="color:${LV[city.level]}">${city.hits} 期</b>波及${P.loc.city}` +
+        `，${city.window.from} – ${city.window.to} 间最接近` +
+        (city.level === "low" ? `<span class="muted">（时效尚远，落点常整体偏移）</span>` : "");
+    } else {
+      cityLine = `<span class="muted">最近 ${st.runsUsed} 期预报的中心路径均未逼近${P.loc.city}（不排除外围风雨）</span>`;
+    }
+    return `<div class="ai-consensus">
+      <div class="aic-head">AI 多期会商<span class="aic-src">Google FNV3 · 研究性数据 · 以官方为准</span></div>
+      <div>${convLine}</div><div>${cityLine}</div></div>`;
+  }
+
   function renderResult() {
     const box = document.getElementById("impact-summary");
     if (!box || P.step !== "result" || !P.regions) return;
@@ -923,6 +958,7 @@ const ImpactPanel = (() => {
       <div class="headline">${results.length > 1 ? `${s.name}：` : ""}${headlineFor(a)}</div>
       <div class="timebrief">${timeBrief} · 距 ${Math.round(haversine(P.loc.lat, P.loc.lng, last.lat, last.lng))} km</div>
       ${a.nowWx ? `<div class="timebrief">此刻本地：${nowWxDesc(a.nowWx)}<span class="muted">（${a.nowWx.obs ? `最近气象站 ${a.nowWx.distKm}km · ${a.nowWx.ageMin} 分钟前实测` : "模式实况，以体感为准"}）</span></div>` : ""}
+      ${aiConsensusHtml(s)}
       ${waveBanner}
       ${s.active === false ? `<div class="slow-badge"><b>残余环流</b> —— 已停编，但残涡仍可能强降雨，雨的风险未结束</div>` : ""}
       ${a.slowThreat ? `<div class="slow-badge"><b>停留型台风</b> —— 移速仅约 ${Math.round(a.moveKmh)} km/h，危险在雨不在风</div>` : ""}`;
