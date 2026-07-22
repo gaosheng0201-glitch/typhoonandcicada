@@ -52,6 +52,7 @@ const ImpactPanel = (() => {
     P.adcodes = await fetchJSON2("data/adcodes.json").catch(() => ({}));                  // adcode→中文名（同源 DataV）
     P.warnings = await fetchJSON2(`data/warnings.json?t=${Date.now()}`).catch(() => null); // 官方预警生效集，缺失降级
     P.impact = await fetchJSON2(`data/impact.json?t=${Date.now()}`).catch(() => null);     // AI 多期会商（FNV3 滞后集合），缺失降级
+    P.rainHist = await fetchJSON2("data/rain-history.json").catch(() => null);             // 城市×台风客观降雨底座（官方路径×ERA5），缺失降级
     buildAdcodeIndex();
     restore();
     buildLocSelects();
@@ -692,6 +693,67 @@ const ImpactPanel = (() => {
     return { analog: rest[0] || null, local: false, quant: false };
   }
 
+  /* 城市降雨史（rain-history.json：官方路径×ERA5 客观降雨，覆盖远多于叙事库）。
+     平静期「你家的台风史」与活跃期无叙事案例时的客观兜底都用它。城市键同源 regions.json。 */
+  function cityRainHistory(city) {
+    if (!P.rainHist || !P.rainHist.d) return [];
+    const out = [];
+    for (const tfid in P.rainHist.d) {
+      const s = P.rainHist.d[tfid];
+      const c = s.cities && s.cities[city];
+      if (c) out.push({ tfid, name: s.name, enName: s.enName, year: tfid.slice(0, 4),
+                        totalMm: c.totalMm, peakMm: c.peakMm, peakDay: c.peakDay,
+                        closestKm: c.closestKm, transit: c.transit });
+    }
+    // 峰值日雨量优先——最戳破侥幸的是「那天一天下了多少」
+    out.sort((a, b) => (b.peakMm || 0) - (a.peakMm || 0));
+    return out;
+  }
+
+  /* 平静期把 d-analog 变成「你家的台风史」：本地客观档案 + 历次台风降雨 + 叙事记忆。
+     只陈列客观量级与生活影响叙事，不作异地量化对比，不涉伤亡。 */
+  function renderCityHistory() {
+    const box = document.querySelector("#d-analog > div");
+    if (!box) return;
+    let html = "";
+    const hist = P.history &&
+      (P.history.d[`${P.loc.province}|${P.loc.city}|${P.loc.district || ""}`] ||
+       P.history.d[`${P.loc.province}|${P.loc.city}|`]);
+    if (hist) {
+      const m = P.history.meta, [c100, c300, month, top] = hist;
+      const freq = c100 > 0 ? `，约每 ${Math.max(1, Math.round(m.years / c100))} 年一次` : "";
+      html += `<div style="margin-bottom:8px">本地档案 <span class="muted">（${m.source}，${m.since} 年以来）</span><br>
+        台风中心 ${m.near_km}km 内经过 <b>${c100}</b> 次${freq}；${m.wide_km}km 内 ${c300} 次，${month} 月最高发</div>`;
+    }
+    const rain = cityRainHistory(P.loc.city);
+    if (rain.length) {
+      const rows = rain.slice(0, 6).map((r) =>
+        `<div class="tl-row"><span class="t">${r.year}</span><span>${r.name}
+          <b>当日峰值约 ${Math.round(r.peakMm)}mm</b><span class="muted">，过程累计约 ${Math.round(r.totalMm)}mm，
+          中心最近约 ${r.closestKm}km${r.transit ? "·过境" : ""}</span></span></div>`).join("");
+      html += `<div style="border-top:1px solid var(--hairline);padding-top:8px">
+        你家的台风史 <span class="muted">（${P.loc.city}，${P.rainHist.meta.source}）</span>${rows}
+        <div class="muted" style="margin-top:6px">再分析降雨，仅供感受「台风到你家时是什么量级」，非官方记录。</div></div>`;
+    }
+    // 有逐字叙事记忆的城市，附最强一条（生活影响，破侥幸）
+    const cityShort = canonCity(P.loc.city);
+    const local = (P.analogs.events || []).filter((e) =>
+      canonCity(e.region.city) === cityShort || e.region.city === P.loc.city);
+    if (local.length) {
+      const strongest = local.slice().sort((a, b) =>
+        (b.hazard.peakPower || 0) - (a.hazard.peakPower || 0) ||
+        (b.impact.level || 0) - (a.impact.level || 0) ||
+        (b.hazard.rainTotalMm || 0) - (a.hazard.rainTotalMm || 0))[0];
+      html += `<div style="border-top:1px solid var(--hairline);margin-top:8px;padding-top:8px">
+        本地记忆：<b>${strongest.typhoon.tfid.slice(0, 4)}年${strongest.typhoon.name}</b>
+        <div class="quote">${strongest.narrative}</div></div>`;
+    }
+    if (!html) {
+      html = `<span class="muted">${P.loc.city}暂无历史台风降雨记录（该地台风活动较少，或数据尚未覆盖）。</span>`;
+    }
+    box.innerHTML = html;
+  }
+
   /* ---------- 数值模式预报（逐小时降水与阵风） ---------- */
 
   async function loadForecast() {
@@ -899,10 +961,11 @@ const ImpactPanel = (() => {
     if (!box || P.step !== "result" || !P.regions) return;
     if (!P.storms.length) {
       box.innerHTML = `<div class="lv-badge lv-1"><b>无风</b>当前无活跃台风</div>
-        <div class="timebrief">有台风生成时，这里会给出 ${locLabel()} 的风险参考</div>`;
-      for (const id of ["d-timeline", "d-analog", "d-checklist"]) {
-        document.querySelector(`#${id} > div`).innerHTML = "";
-      }
+        <div class="timebrief">有台风生成时，这里会给出 ${locLabel()} 的风险参考。平静期先看看 ${locLabel()} 经历过的台风——它们真的到过这里。</div>`;
+      document.querySelector("#d-timeline > div").innerHTML = "";
+      document.querySelector("#d-checklist > div").innerHTML = "";
+      renderCityHistory();  // 平静期：把 d-analog 变成「你家的台风史」（客观降雨底座）
+      document.getElementById("d-analog").open = true;  // 平静期默认展开，让人先看到自家台风史
       return;
     }
 
