@@ -23,7 +23,10 @@
   实际影响档位** 三维匹配——过境后按真实轻重分「外围掠过 / 明显影响 / 正面重创」三档，
   不拿“排水抢救受淹作物”去套一个田里没进水的农户。
 - **历史对照（城市记忆）**：双锚点——最相似的一次 + 本地最强纪录；同城才做定量对比。
-  当前对照库约 280 条（~100 台风 × 城市）。
+  人工对照库约 300 条（~90 台风 × 城市），另有客观降雨底座 92 台风 × 3700+ 城市条目兜底覆盖。
+- **平静期「你家的台风史」**：无活跃台风时，输入所在城市即可看到历史上真正影响过这里的
+  台风与当时的客观降雨量级（官方路径 × ERA5，覆盖每座地级市），把抽象的“台风”变成
+  “真的到过我家”的具体记忆。
 - **AI 预报复盘**：用 AI 模型的历史预报回算“提前 N 天预报，实际差多少公里”
   （首个接入：Google DeepMind FGN / FNV3，巴威 +72h 平均偏差约 52km）。
 - **分享卡片**：真实地图底图 + 位置/风圈/路径按真实地理绘制，核心信息是
@@ -49,15 +52,22 @@ sh scripts/update.sh                  # 手动刷新全部快照（台风/METAR/
 ## 结构
 
 ```
-fetcher/fetch.py         抓取器：温州台风网 API → 规范化 JSON 快照
-fetcher/fetch_metar.py   全国机场 METAR 实测快照（“此刻”锚点）
-fetcher/fetch_fnv3.py    FNV3 AI 预报复盘：对官方实况算路径偏差
-fetcher/build_history.py 区县历史台风档案（IBTrACS）
-fetcher/build_regions.py 全国省市区经纬度（一次性，行政区划变更时重跑）
-docs/                    静态前端（MapLibre GL JS，深色底图），GitHub Pages 直接发布此目录
-docs/data/               抓取器输出（快照 + 对照库 + 历史档案 + FNV3 复盘）
-.github/workflows/       云端定时：update-data(30min) / fnv3(6h) / validate(PR 校验)
+fetcher/fetch.py             抓取器：温州台风网 API → 规范化 JSON 快照
+fetcher/fetch_metar.py       全国机场 METAR 实测快照（“此刻”锚点）
+fetcher/fetch_fnv3.py        FNV3 AI 预报复盘：对官方实况算路径偏差
+fetcher/build_history.py     区县历史台风档案（IBTrACS）
+fetcher/build_regions.py     全国省市区经纬度（一次性，行政区划变更时重跑）
+fetcher/build_gap.py         对照库缺口矩阵 → analogs-gap.md（该补哪座城市）
+fetcher/build_rain_history.py 城市×台风客观降雨底座（官方路径×ERA5）→ rain-history.json
+fetcher/build_extract.py     批量抽取脚手架（官方路径定清单/抓源/引文回查/校验）
+docs/                        静态前端（MapLibre GL JS，深色底图），GitHub Pages 直接发布此目录
+docs/data/                   抓取器输出（快照 + 对照库 + 历史档案 + 降雨底座 + FNV3 复盘）
+.github/workflows/           云端定时：update-data(30min) / fnv3(6h) / validate(PR 校验)
 ```
+
+对照库分两层，`build_gap` / `build_rain_history` 是「自动覆盖主干」（客观数据保证每座
+城市都有底数），人工 `analogs.json` 是「精品叙事层」（有原文的城市灾情记忆）。详见
+[CONTRIBUTING.md](CONTRIBUTING.md#自动覆盖主干城市历史降雨底座)。
 
 ## 数据源
 
@@ -68,6 +78,7 @@ docs/data/               抓取器输出（快照 + 对照库 + 历史档案 + F
 | 「此刻」实测 | NOAA aviationweather.gov METAR | 机场实测，服务端抓成快照（无 CORS） |
 | AI 预报复盘 | Google DeepMind FGN / FNV3 | 官方可脚本化下载；仅用 48h 前数据（CC BY 4.0） |
 | 区县历史档案 | IBTrACS v04r01（NOAA） | 1949 年以来客观统计，纯计算可复核 |
+| 城市历史降雨 | Open-Meteo Historical（ERA5 再分析） | 免 key、覆盖 1940+、与前端同源；再分析对极端峰值偏平滑，仅作量级参考 |
 | 备用官方源 | JMA / 中央气象台 | 均验证过，接口故障时切换 |
 
 ## 数据规范与合规
