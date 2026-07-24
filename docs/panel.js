@@ -639,9 +639,16 @@ const ImpactPanel = (() => {
         : "台风已过境，本地以外围影响为主";
     }
     if (!a.win && a.closing) return "台风还远，是否影响你尚无法判断";
-    // 等级1但确有风雨窗口（弱系统近距离经过）：不能说"路径不经过你"
-    if (a.level === 1 && a.win) return "会有些风雨，但影响有限，留意即可";
-    return LV_STYLE[a.level].headline;
+    // 来之前（approach）：紧迫程度随「风雨还有多久到」缩放——窗口在 6 天后却喊
+    // 「今天完成防台准备」不合理（校准的冷静：别提前几天就催、制造疲劳/狼来了）。
+    if (a.win) {
+      if (a.level === 1) return "会有些风雨，但影响有限，留意即可";
+      const leadH = (a.win.startT - Date.now()) / 3.6e6;
+      const impact = a.level >= 4 ? "可能严重受灾" : a.level === 3 ? "预计影响明显" : "预计有影响";
+      if (leadH > 72) return `${impact}，但风雨还有约 ${Math.round(leadH / 24)} 天才到——先跟踪路径，暂不用忙`;
+      if (leadH > 36) return `${impact}，未来一两天做好防台准备`;
+    }
+    return LV_STYLE[a.level].headline;   // 临近（≤~1.5 天）或无窗高档：用原紧迫标题
   }
 
   function assessAll() {
