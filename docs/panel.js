@@ -2,7 +2,11 @@
    步骤：地区 → 人群 → 环境 → 结果；已设置过的用户折叠为迷你摘要条。
    评估是全局的：我的位置 × 所有台风/残涡，取最危险系统定档。 */
 const ImpactPanel = (() => {
-  const SLOW_KMH = 18;
+  // 停留型判据：西北太平洋台风常态移速 15~20km/h（快的 30），真正「移动缓慢」是 5~10km/h
+  // （海葵登陆后 5-10、烟花平均<10）。原 18km/h 卡在常态区间中段，几乎人人中招——收到 10。
+  // 更本质的判据是「在你附近待多久」：移速快但路径贴着你走，照样是长时间碾压。
+  const SLOW_KMH = 10;
+  const STALL_HOURS = 24;
   // 前期影响雨量法（官方山洪/地质灾害预警口径）：Pa=Σ Kⁱ·P，K 日退水系数；
   // 土壤饱和度 w=min(1,Pa/Wm)，Wm 为土壤最大蓄水量。用于「动态临界雨量」——土越湿门槛越低。
   const SOIL_K = 0.85, WM_SOIL_MM = 100, SOIL_DROP = 0.4;
@@ -614,8 +618,11 @@ const ImpactPanel = (() => {
     const soilW = (anteRec && typeof anteRec === "object") ? anteRec.w : 0;
 
     // 停留型是「威胁」描述，只在台风确实会缓慢碾过你所在区域时才成立——
-    // 刚生成、远在洋面上移速慢的弱台风（海神教训）不算停留威胁，别贴标签
-    const slowThreat = slowMover && closest.dist < wr;
+    // 刚生成、远在洋面上移速慢的弱台风（海神教训）不算停留威胁，别贴标签。
+    // 判据 = 中心进你影响半径 且（真慢 或 在你附近滞留够久）——16km/h 只影响你半天
+    // 的正常速度台风不算停留（荔湾教训）；移速不慢但贴着你走十几小时的，才是真威胁。
+    const stalling = durationH !== null && durationH >= STALL_HOURS;
+    const slowThreat = closest.dist < wr && (slowMover || stalling);
 
     return { closest, galeR, galeREst, inRange, win, rain, rainSrc, peakRain, peakGust, phase, postRain24,
              nowWx, easing, closing, fcEndTs, relevant, soilW, dNow, centerNear,
@@ -1036,7 +1043,9 @@ const ImpactPanel = (() => {
       ${aiConsensusHtml(s)}
       ${waveBanner}
       ${s.active === false ? `<div class="slow-badge"><b>残余环流</b> —— 已停编，但残涡仍可能强降雨，雨的风险未结束</div>` : ""}
-      ${a.slowThreat ? `<div class="slow-badge"><b>停留型台风</b> —— 移速仅约 ${Math.round(a.moveKmh)} km/h，危险在雨不在风</div>` : ""}`;
+      ${a.slowThreat ? `<div class="slow-badge"><b>停留型台风</b> —— ${
+        a.slowMover ? `移速仅约 ${Math.round(a.moveKmh)} km/h` : `风雨将持续约 ${Math.round(a.durationH)} 小时`
+      }，危险在雨不在风</div>` : ""}`;
     box.querySelectorAll(".storm-chip").forEach((b) => {
       b.onclick = () => { P.focusTfid = b.dataset.tf; renderResult(); };
     });
