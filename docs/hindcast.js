@@ -47,10 +47,18 @@ const Hindcast = (() => {
         <span class="hc-bar"><i style="width:${w}%"></i></span>
         <span class="hc-km">${s[h]} km</span></div>`;
     }).join("");
-    const d3 = s["72"], d5 = s["120"];
-    const takeaway = `<b>${d.name} ${d.enName}</b>：回算 ${d.forecasts.length} 期历史预报，` +
-      `AI 提前 3 天（+72h）路径平均只差 <b>${d3} km</b>` +
-      (d5 ? `，提前 5 天（+120h）约 <b>${d5} km</b>` : "") + "。";
+    // 刚生成的台风只有短提前量（如红霞仅 +24/+48），不能写死取 +72h——否则显示
+    // 「只差 undefined km」。用「有数据的最长提前量」，优先 +72h（最有代表性）。
+    const avail = LEADS.filter((h) => s[h] != null);
+    const primary = s["72"] != null ? 72 : avail[avail.length - 1];
+    const asDay = (h) => (h % 24 === 0 ? `${h / 24} 天` : `${h} 小时`);
+    const takeaway = !avail.length
+      ? `<b>${d.name} ${d.enName}</b>：已回算 ${d.forecasts.length} 期历史预报，` +
+        `验证时效尚不足，暂无平均偏差。`
+      : `<b>${d.name} ${d.enName}</b>：回算 ${d.forecasts.length} 期历史预报，` +
+        `AI 提前 ${asDay(primary)}（+${primary}h）路径平均只差 <b>${s[primary]} km</b>` +
+        (primary !== 120 && s["120"] != null ? `，提前 5 天（+120h）约 <b>${s["120"]} km</b>` : "") +
+        "。" + (d.forecasts.length < 4 ? "（期数尚少，仅供参考）" : "");
 
     el.innerHTML = `
       <div class="hc-model">Google DeepMind · FGN（FNV3）实验性 AI 模型</div>

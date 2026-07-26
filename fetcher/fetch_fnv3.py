@@ -32,10 +32,13 @@ ATTR = ("实验性数据 © 2024–2025 Google LLC，其机器学习模型生成
         "按 CC BY 4.0 授权（关联时刻 48 小时前）。仅供研究，不用于实际预警。")
 SAFETY_H = 48  # 只用 48h 以前的数据
 
-# 需要复盘的台风：track_id 为 FNV3 编号（basin+序号+年，如 WP092026）
-STORMS = [
-    {"tfid": "202609", "trackId": "WP092026", "name": "巴威", "enName": "BAVI"},
-]
+# FNV3 编号（basin+序号+年，如 WP092026）与中国编号（202609）的序号**并不一致**：
+# JTWC/FNV3 给未命名的热带低压也编号，红霞是中国第 12 号、FNV3 却是 WP11。
+# 所以不能按 tfid 推算，只能按位置把两者对上（discover_track_id）。已对上的存入
+# trackids.json 缓存，避免每次重新探测。
+TRACKIDS = OUTDIR / "trackids.json"
+KNOWN_TRACKIDS = {"202609": "WP092026"}   # 种子映射（历史已验证）
+MATCH_KM = 250      # lead0 分析场与官方定位的正常差异上限（红霞实测 57km）
 
 
 def hav(a, b, c, d):
@@ -112,8 +115,86 @@ def fetch_forecast(track_id, init_dt):
     return track
 
 
-def hindcast_storm(st, now_utc):
-    obs, name, enname = load_observed(st["tfid"])
+def load_trackids():
+    m = dict(KNOWN_TRACKIDS)
+    if TRACKIDS.exists():
+        try:
+            m.update(json.loads(TRACKIDS.read_text(encoding="utf-8")))
+        except Exception:
+            pass
+    return m
+
+
+def recent_inits(now_utc, n=6):
+    """最近 n 期 00Z/12Z，且都在 48h 红线之外（合规）。"""
+    cutoff = now_utc - timedelta(hours=SAFETY_H)
+    out, day = [], datetime(cutoff.year, cutoff.month, cutoff.day, tzinfo=timezone.utc)
+    while len(out) < n and day > cutoff - timedelta(days=n):
+        for hh in (12, 0):
+            t = day.replace(hour=hh)
+            if t <= cutoff:
+                out.append(t)
+        day -= timedelta(days=1)
+    return out[:n]
+
+
+def discover_track_id(obs, now_utc, basin="WP"):
+    """按位置把官方实况与 FNV3 track_id 对上（序号对不上，只能靠位置）。
+    取每期各 track 最小提前量的点，与该有效时刻的实况插值位置比距离。"""
+    for init_dt in recent_inits(now_utc):
+        try:
+            txt = get(f"{FNV3_BASE}/FNV3_{init_dt.strftime('%Y_%m_%dT%H_%M')}_paired.csv")
+        except Exception:
+            continue
+        cands = {}
+        for line in txt.splitlines():
+            if line.startswith("#") or line.startswith("init_time") or not line.strip():
+                continue
+            c = line.split(",")
+            tid = c[1]
+            if not tid.startswith(basin):
+                continue
+            try:
+                lead = int(c[5])
+                vt = datetime.strptime(c[3], "%Y-%m-%d %H:%M:%S").replace(
+                    tzinfo=timezone.utc).timestamp()
+                pt = (lead, float(c[6]), float(c[7]), vt)
+            except (ValueError, IndexError):
+                continue
+            if tid not in cands or lead < cands[tid][0]:
+                cands[tid] = pt
+        best, bestd = None, 1e9
+        for tid, (_lead, la, lo, vt) in cands.items():
+            o = obs_at(obs, vt)
+            if not o:
+                continue
+            d = hav(la, lo, o[0], o[1])
+            if d < bestd:
+                best, bestd = tid, d
+        if best and bestd <= MATCH_KM:
+            return best, round(bestd)
+    return None, None
+
+
+def storm_list(now_utc):
+    """要复盘的台风 = 当前活跃 + 已有复盘结果的（历史档案继续保留、继续更新）。"""
+    ids = {}
+    for f in sorted(OUTDIR.glob("*.json")):
+        if f.stem not in ("index", "trackids"):
+            ids[f.stem] = {"tfid": f.stem, "active": False}
+    try:
+        idx = json.loads((ROOT / "docs" / "data" / "index.json").read_text(encoding="utf-8"))
+        for t in idx.get("typhoons", []):
+            ids[t["tfid"]] = {"tfid": t["tfid"], "name": t.get("name"),
+                              "enName": t.get("enName"), "active": True}
+    except Exception as e:
+        print(f"[fnv3] 读当前台风列表失败（仅复盘历史）: {e}", file=sys.stderr)
+    return list(ids.values())
+
+
+def hindcast_storm(st, now_utc, obs=None, name=None, enname=None):
+    if obs is None:
+        obs, name, enname = load_observed(st["tfid"])
     if not obs:
         raise RuntimeError("实况轨迹为空")
     forecasts = []
@@ -160,20 +241,43 @@ def main():
     # Date.now 在 JS 里不可用；此处用真实 UTC 现在时刻判定 48h 红线
     now_utc = datetime.now(timezone.utc)
     OUTDIR.mkdir(parents=True, exist_ok=True)
+    trackids = load_trackids()
     index = []
-    for st in STORMS:
+    for st in storm_list(now_utc):
+        tfid = st["tfid"]
         try:
-            data = hindcast_storm(st, now_utc)
+            obs, name, enname = load_observed(tfid)
+            if not obs:
+                raise RuntimeError("实况轨迹为空")
+            tid = trackids.get(tfid)
+            if not tid:
+                tid, dkm = discover_track_id(obs, now_utc)
+                if not tid:
+                    print(f"[fnv3] {tfid} {name}: FNV3 未收录（新生成或非西太），跳过",
+                          file=sys.stderr)
+                    continue
+                trackids[tfid] = tid
+                print(f"[fnv3] 发现映射 {tfid} {name} ←→ {tid}（位置差 {dkm}km）")
+            data = hindcast_storm({"tfid": tfid, "trackId": tid, "name": name,
+                                   "enName": enname}, now_utc, obs, name, enname)
         except Exception as e:
-            print(f"[fnv3] {st['tfid']} 复盘失败，保留旧结果: {e}", file=sys.stderr)
+            print(f"[fnv3] {tfid} 复盘失败，保留旧结果: {e}", file=sys.stderr)
             continue
-        (OUTDIR / f"{st['tfid']}.json").write_text(
+        if not data["forecasts"]:
+            print(f"[fnv3] {tfid} {data['name']}: 尚无 48h 红线外的预报期，跳过",
+                  file=sys.stderr)
+            continue
+        (OUTDIR / f"{tfid}.json").write_text(
             json.dumps(data, ensure_ascii=False, separators=(",", ":")))
-        index.append({"tfid": st["tfid"], "name": data["name"], "enName": data["enName"],
-                      "summary": data["summary"], "nForecasts": len(data["forecasts"])})
+        index.append({"tfid": tfid, "name": data["name"], "enName": data["enName"],
+                      "summary": data["summary"], "nForecasts": len(data["forecasts"]),
+                      "active": bool(st.get("active"))})
         s = data["summary"]
-        print(f"[fnv3] {data['name']} {st['tfid']}: {len(data['forecasts'])} 期预报, "
+        print(f"[fnv3] {data['name']} {tfid}: {len(data['forecasts'])} 期预报, "
               f"平均偏差 +72h={s.get('72','-')}km +120h={s.get('120','-')}km")
+    TRACKIDS.write_text(json.dumps(trackids, ensure_ascii=False, indent=1))
+    # 活跃优先、同组内新的在前——前端取 storms[0] 时拿到的才是「当前这场」
+    index.sort(key=lambda x: (0 if x.get("active") else 1, -int(x["tfid"])))
     if index:
         (OUTDIR / "index.json").write_text(json.dumps(
             {"updatedAt": now_utc.strftime("%Y-%m-%d %H:%M UTC"), "storms": index},
