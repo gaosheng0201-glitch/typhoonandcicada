@@ -1,1 +1,1 @@
-{"updatedAt":"2026-07-27 04:05 UTC","storms":[{"tfid":"202612","name":"红霞","enName":"NOUL","summary":{"24":35,"48":50,"72":98},"nForecasts":4,"active":true},{"tfid":"202609","name":"巴威","enName":"BAVI","summary":{"24":31,"48":44,"72":53,"96":80,"120":106},"nForecasts":26,"active":false}]}
+{"updatedAt":"2026-07-27 10:11 UTC","storms":[{"tfid":"202612","name":"红霞","enName":"NOUL","summary":{"24":35,"48":50,"72":98},"nForecasts":4,"active":false},{"tfid":"202609","name":"巴威","enName":"BAVI","summary":{"24":31,"48":44,"72":53,"96":80,"120":106},"nForecasts":26,"active":false}]}
