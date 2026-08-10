@@ -472,9 +472,11 @@ const ImpactPanel = (() => {
               startTs: inRange[0].time, endTs: endP.time,
               src: "几何", open: !endPoint && stillInRangeAtEnd };
     }
-    // 相关性门槛：用「降雨相关半径」而非风圈——外围雨带比风圈远得多（杭州教训）
-    const relevant = inRange.length > 0 || closest.dist <= rainRadius(closest);
-    let rain, rainSrc = "演示估算", peakRain = null, peakGust = null;
+    // 相关性门槛：用「降雨相关半径」而非风圈（外围雨带比风圈远得多，杭州教训），
+    // 并按降水不对称做方向订正（右前象限放大、左后收窄，白海豚实测 13 倍差）
+    const dirF = rainDirFactor(s.track.concat(fc ? fc.points : []), closest);
+    const relevant = inRange.length > 0 || closest.dist <= rainRadius(closest, dirF);
+    let rain, rainPast = null, rainFuture = null, rainSrc = "演示估算", peakRain = null, peakGust = null;
     if (fdata && !relevant) {
       rain = 0;
       rainSrc = "模式预报";
@@ -510,11 +512,18 @@ const ImpactPanel = (() => {
                 startTs: fdata.ts[iF].replace("T", " ") + ":00",
                 endTs: fdata.ts[iL].replace("T", " ") + ":00",
                 src: "模式", open: iL >= fdata.t.length - 2 };
+        // 已发生 / 未来 分开累计：预警要回答「接下来还有多少」，而已下过的是既成
+        // 事实、不该被改写（同一场台风昨天说 186mm、今天说 0mm 的不稳定根源）
+        const nowMs = Date.now();
+        rainPast = 0; rainFuture = 0;
         for (let i = iF; i <= iL; i++) {
-          rain += fdata.p[i] || 0;
+          const v = fdata.p[i] || 0;
+          rain += v;
+          if (fdata.t[i] <= nowMs) rainPast += v; else rainFuture += v;
           if (!peakRain || (fdata.p[i] || 0) > peakRain.v) peakRain = { ts: fdata.ts[i], v: fdata.p[i] || 0 };
           if (!peakGust || (fdata.g[i] || 0) > peakGust.v) peakGust = { ts: fdata.ts[i], v: fdata.g[i] || 0 };
         }
+        rainPast = Math.round(rainPast); rainFuture = Math.round(rainFuture);
       }
       rain = Math.round(rain);
       rainSrc = "模式预报";
@@ -624,7 +633,8 @@ const ImpactPanel = (() => {
     const stalling = durationH !== null && durationH >= STALL_HOURS;
     const slowThreat = closest.dist < wr && (slowMover || stalling);
 
-    return { closest, galeR, galeREst, inRange, win, rain, rainSrc, peakRain, peakGust, phase, postRain24,
+    return { closest, galeR, galeREst, inRange, win, rain, rainPast, rainFuture, rainSrc,
+             peakRain, peakGust, phase, postRain24,
              nowWx, easing, closing, fcEndTs, relevant, soilW, dNow, centerNear,
              level, moveKmh, slowMover, slowThreat, durationH, endPoint, stillInRangeAtEnd };
   }
@@ -1002,6 +1012,18 @@ const ImpactPanel = (() => {
           </button>`).join("")}</div>`
       : "";
 
+    // 预警的主角是「接下来还会怎样」：进行中/来之前都把「还会下多少」摆出来；
+    // 已发生的量作背景，既不改写也不喧宾夺主
+    let aheadBrief = "";
+    if (a.relevant && a.rainFuture !== null) {
+      if (a.phase !== "after" && a.rainFuture >= 5) {
+        aheadBrief = `<div class="timebrief"><b>接下来还有约 ${a.rainFuture} mm 降雨</b>` +
+          (a.rainPast >= 5 ? `<span class="muted">（本次已下约 ${a.rainPast} mm）</span>` : "") + `</div>`;
+      } else if (a.phase === "after" && a.rainPast >= 5) {
+        aheadBrief = `<div class="timebrief"><span class="muted">本次过程本地累计约 ${a.rainPast} mm</span></div>`;
+      }
+    }
+
     let timeBrief;
     if (a.win && a.phase === "during") {
       timeBrief = `${fmtTime(a.win.startTs)}已开始${a.win.open ? "，预报期内持续" : `，预计 ${fmtTime(a.win.endTs)}基本结束`}`;
@@ -1040,6 +1062,7 @@ const ImpactPanel = (() => {
       <div class="headline">${results.length > 1 ? `${s.name}：` : ""}${headlineFor(a)}</div>
       <div class="timebrief">${timeBrief} · 距 ${Math.round(haversine(P.loc.lat, P.loc.lng, last.lat, last.lng))} km</div>
       ${a.nowWx ? `<div class="timebrief">此刻本地：${nowWxDesc(a.nowWx)}<span class="muted">（${a.nowWx.obs ? `最近气象站 ${a.nowWx.distKm}km · ${a.nowWx.ageMin} 分钟前实测` : "模式实况，以体感为准"}）</span></div>` : ""}
+      ${aheadBrief}
       ${aiConsensusHtml(s)}
       ${waveBanner}
       ${s.active === false ? `<div class="slow-badge"><b>残余环流</b> —— 已停编，但残涡仍可能强降雨，雨的风险未结束</div>` : ""}
@@ -1129,7 +1152,7 @@ const ImpactPanel = (() => {
         本次为强风型台风（约 ${inPower} 级），本地最接近的记忆：
         <b>${analog.typhoon.tfid.slice(0, 4)}年${analog.typhoon.name}</b>（${analog.hazard.peakPower} 级）
         <div class="quote">${analog.narrative}</div>`;
-    } else if (analog && local && quant) {
+    } else if (analog && local && quant && a.rain > 0) {
       const ratio = a.rain / analog.hazard.rainTotalMm;
       const compare = ratio > 1.3 ? "已超过" : ratio >= 0.7 ? "接近" : `约为其 ${Math.round(ratio * 100)}%，远小于`;
       analogHTML = `
@@ -1137,9 +1160,12 @@ const ImpactPanel = (() => {
         <b>${analog.typhoon.tfid.slice(0, 4)}年${analog.typhoon.name}</b>时本地的 ${analog.hazard.rainTotalMm}mm
         <div class="quote">${analog.narrative}</div>`;
     } else if (analog && local) {
+      // 本次没有有效雨量时绝不做百分比对比——「0mm 约为其 0%」比不说更误导
+      const why = quant ? "（本台风预计不给本地带来明显降雨，不作量化对比）"
+                        : "（该案例无雨量记录，不作量化对比）";
       analogHTML = `
         本地案例：<b>${analog.typhoon.tfid.slice(0, 4)}年${analog.typhoon.name}</b>
-        <span class="muted">（该案例无雨量记录，不作量化对比）</span>
+        <span class="muted">${why}</span>
         <div class="quote">${analog.narrative}</div>`;
     } else if (analog && a.rain >= 50 && analog.hazard.rainTotalMm <= a.rain * 2.5 && analog.hazard.rainTotalMm >= a.rain * 0.4) {
       // 异地量级参考：仅当预计雨量可观且与案例确实同量级时才展示
@@ -1721,9 +1747,45 @@ const ImpactPanel = (() => {
      外围暴雨可能先到。教训：白海豚（8 级、深入内陆）中心距杭州 257 km，超出
      「风圈160×1.25=200」判「与台风无关」，可杭州正连下三天、累计 186 mm 大暴雨，
      官方同期也把江浙沪划入「危险半圆」。故雨的相关性单独用更大的半径。
-     夹在 [300,600]：下限保住弱残涡的强降雨（美莎克教训），上限防止全国都算台风账。 */
-  function rainRadius(p) {
-    return Math.min(600, Math.max(300, warnRadius(p) * 2.5));
+     夹在 [300,600]：下限保住弱残涡的强降雨（美莎克教训），上限防止全国都算台风账。
+
+     dirFactor：降水**极不对称**，不是一个圆。白海豚实测——移动方向右前象限
+     5 城平均 147mm，左侧 3 城平均仅 11mm（13 倍），且距离完全解释不了（福州
+     159km 只 11mm，上海 348km 却 193mm）。文献亦然：强降水位于路径前进方向
+     右侧、对流集中在移动方向右前象限（低空急流与水汽输送在右侧更强）。 */
+  function rainRadius(p, dirFactor) {
+    const base = Math.min(600, Math.max(300, warnRadius(p) * 2.5));
+    return dirFactor == null ? base : Math.max(150, base * dirFactor);
+  }
+
+  /* 方位角：从 (a,b) 看向 (c,d)，0=正北 90=正东 */
+  function bearing(a, b, c, d) {
+    const p = Math.PI / 180;
+    const y = Math.sin((d - b) * p) * Math.cos(c * p);
+    const x = Math.cos(a * p) * Math.sin(c * p) - Math.sin(a * p) * Math.cos(c * p) * Math.cos((d - b) * p);
+    return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+  }
+
+  /* 台风在某时刻的移动方向：取该时刻前后最近的两个轨迹点 */
+  function moveBearingAt(seq, targetEp) {
+    let prev = null, next = null;
+    for (const p of seq) {
+      const t = ptime(p);
+      if (t <= targetEp) prev = p;
+      else { next = p; break; }
+    }
+    const a = prev || seq[0], b = next || seq[seq.length - 1];
+    if (!a || !b || a === b) return null;
+    return bearing(a.lat, a.lng, b.lat, b.lng);
+  }
+
+  /* 降水不对称的方向因子：相对移动方向的右前(≈45°)最大、左后最小 */
+  function rainDirFactor(seq, closest) {
+    const mv = moveBearingAt(seq, ptime(closest));
+    if (mv == null) return null;
+    const toMe = bearing(closest.lat, closest.lng, P.loc.lat, P.loc.lng);
+    const rel = (((toMe - mv) % 360) + 360) % 360;
+    return 0.65 + 0.35 * Math.cos((rel - 45) * Math.PI / 180);
   }
   /* 数据时间均为北京时间：显式按 +08:00 解析，海外浏览器也能与 Date.now() 正确比较 */
   function ptime(p) { return new Date(p.time.replace(" ", "T") + "+08:00").getTime(); }
