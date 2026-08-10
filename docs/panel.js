@@ -53,6 +53,7 @@ const ImpactPanel = (() => {
       fetchJSON2(`data/survival.json?t=${Date.now()}`).catch(() => null), // 应急手册
     ]);
     P.coastal = await fetchJSON2(`data/coastal.json?t=${Date.now()}`).catch(() => ({})); // 沿海采样表，缺失降级
+    P.rainPct = await fetchJSON2("data/rain-percentile.json").catch(() => null);          // 城市历史台风雨量分位表
     P.adcodes = await fetchJSON2("data/adcodes.json").catch(() => ({}));                  // adcode→中文名（同源 DataV）
     P.warnings = await fetchJSON2(`data/warnings.json?t=${Date.now()}`).catch(() => null); // 官方预警生效集，缺失降级
     P.impact = await fetchJSON2(`data/impact.json?t=${Date.now()}`).catch(() => null);     // AI 多期会商（FNV3 滞后集合），缺失降级
@@ -1143,6 +1144,25 @@ const ImpactPanel = (() => {
         <div style="border-top:1px solid var(--hairline);padding-top:8px"></div>`;
     }
 
+    // 本地气候标定：同样的雨在不同城市完全不是一回事——100mm 在屏东排第 16 百分位
+    // （中位 216mm），在北京却是有记录以来最大。用这座城市自己的台风降雨史来说话，
+    // 才把「脆弱性/气候背景」这一维补上。仅作表达与标定，不直接改判档。
+    let pctHTML = "";
+    const pctRec = P.rainPct && P.rainPct.d && P.rainPct.d[P.loc.city];
+    if (pctRec && pctRec.v.length >= 10 && a.relevant && a.rain > 0) {
+      const n = pctRec.v.length;
+      const p = Math.round(100 * pctRec.v.filter((v) => v <= a.rain).length / n);
+      const tone = p >= 90 ? "在本地属**罕见量级**" : p >= 70 ? "高于本地多数台风" :
+                   p >= 40 ? "属本地中等水平" : "低于本地多数台风";
+      // 不再重复列「本地最强」——下方的同城案例对照已给出具体台风与当时的影响
+      pctHTML = `
+        <div style="margin-bottom:8px">
+          本次 <b>${a.rain}mm</b> 在本地台风降雨史中排 <b>第 ${p} 百分位</b>
+          <span class="muted">（近 ${n} 场台风样本 · ${tone.replace(/\*\*/g, "")}）</span>
+        </div>
+        <div style="border-top:1px solid var(--hairline);padding-top:8px"></div>`;
+    }
+
     // 历史对照：同城才做量化对比；异地只做量级参考并明说局限
     const inPower = parseInt(a.closest.power) || 0;
     const { analog, local, quant, mode, strongest } = findAnalog(a.rain, inPower);
@@ -1187,7 +1207,7 @@ const ImpactPanel = (() => {
           <div class="quote">${strongest.narrative}</div>
         </div>`;
     }
-    document.querySelector("#d-analog > div").innerHTML = histHTML + analogHTML;
+    document.querySelector("#d-analog > div").innerHTML = histHTML + pctHTML + analogHTML;
 
     // 清单（按阶段：备灾 / 避险 / 恢复期）
     const items = phaseChecklist(a);
