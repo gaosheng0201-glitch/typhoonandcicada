@@ -538,9 +538,17 @@ const ImpactPanel = (() => {
 
     const power = parseInt(closest.power) || 0;
     const wr = warnRadius(closest);
+    // 风险档的雨臂与 localImpactTier 同口径：同样的雨，土越湿越危险、致灾门槛越低。
+    // 原先 level 用固定 60/150/250、tier 却用动态阈值——两套尺子。后果：杭州连下
+    // 三天土壤已饱和，只因未来预报下调让总量跨回 150 以下就降档，可台风还在影响中。
+    const anteRec = P.antecedent[`${P.loc.lat},${P.loc.lng}`];
+    const soilW = (anteRec && typeof anteRec === "object") ? anteRec.w : 0;
+    const wet = 1 - SOIL_DROP * soilW;
     let level = 1;
-    if (rain >= 60 || (closest.dist < wr && power >= 8)) level = 2;
-    if (rain >= 150 || (closest.dist < 200 && power >= 10)) level = 3;
+    if (rain >= 60 * wet || (closest.dist < wr && power >= 8)) level = 2;
+    if (rain >= 150 * wet || (closest.dist < 200 && power >= 10)) level = 3;
+    // 「高危」的文案涉及听从转移安排，门槛不随土壤湿度下调——湿土提前进入戒备是
+    // 合理的，但把整片长三角推到转移级别就过度了（土壤饱和时 187mm 也会触发）。
     if (rain >= 250 || (closest.dist < 100 && power >= 14)) level = 4;
     if (slowMover && closest.dist < wr) level = Math.max(level, 3);
 
@@ -628,9 +636,6 @@ const ImpactPanel = (() => {
       closing = closest.dist < nowDist - 150 && closest.dist <= warnRadius(closest) * 2.5;
       if (fc && fc.points.length) fcEndTs = fc.points[fc.points.length - 1].time;
     }
-
-    const anteRec = P.antecedent[`${P.loc.lat},${P.loc.lng}`];
-    const soilW = (anteRec && typeof anteRec === "object") ? anteRec.w : 0;
 
     // 停留型是「威胁」描述，只在台风确实会缓慢碾过你所在区域时才成立——
     // 刚生成、远在洋面上移速慢的弱台风（海神教训）不算停留威胁，别贴标签。
@@ -1020,16 +1025,19 @@ const ImpactPanel = (() => {
           </button>`).join("")}</div>`
       : "";
 
-    // 预警的主角是「接下来还会怎样」：进行中/来之前都把「还会下多少」摆出来；
-    // 已发生的量作背景，既不改写也不喧宾夺主
+    // 预警的主角是「接下来还会怎样」，但**不做「总量−已下＝还剩」的减法**：模式雨量
+    // 本身误差大、机构还会不断调整，减出来的「还剩 20mm」是假精度。用户真正需要的是
+    // 「影响到哪一步了」——刚开始 / 正猛 / 快结束，这个定性判断稳健得多。
     let aheadBrief = "";
-    if (a.relevant && a.rainFuture !== null) {
-      if (a.phase !== "after" && a.rainFuture >= 5) {
-        aheadBrief = `<div class="timebrief"><b>接下来还有约 ${a.rainFuture} mm 降雨</b>` +
-          (a.rainPast >= 5 ? `<span class="muted">（本次已下约 ${a.rainPast} mm）</span>` : "") + `</div>`;
-      } else if (a.phase === "after" && a.rainPast >= 5) {
-        aheadBrief = `<div class="timebrief"><span class="muted">本次过程本地累计约 ${a.rainPast} mm</span></div>`;
-      }
+    if (a.relevant && a.win && a.rain > 0 && a.rainPast !== null) {
+      const prog = a.rainPast / Math.max(a.rain, 1);
+      let txt;
+      if (a.phase === "after") txt = "本次风雨影响<b>已基本结束</b>";
+      else if (prog < 0.25) txt = "风雨影响<b>刚开始</b>，主要过程还在后面";
+      else if (prog < 0.7) txt = a.easing ? "已过最强时段，风雨仍在持续" : "正处在<b>影响较强的时段</b>";
+      else txt = "影响<b>已过大半</b>，接近尾声";
+      const bg = a.rainPast >= 5 ? `<span class="muted">（本次已下约 ${a.rainPast} mm）</span>` : "";
+      aheadBrief = `<div class="timebrief">${txt}${bg}</div>`;
     }
 
     let timeBrief;

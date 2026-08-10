@@ -82,12 +82,22 @@ def load_storm(tfid):
 
 
 def load_wx(lat, lng):
+    """逐时风雨（past_days 与前端同为 7）+ 前期影响雨量 Pa 的土壤饱和度。"""
     d = get(f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lng}"
-            f"&hourly=precipitation,wind_gusts_10m&past_days=2&forecast_days=7"
-            f"&timezone=Asia%2FShanghai")
+            f"&hourly=precipitation,wind_gusts_10m&daily=precipitation_sum"
+            f"&past_days=14&forecast_days=7&timezone=Asia%2FShanghai")
     h = d["hourly"]
     t = [datetime.strptime(x, "%Y-%m-%dT%H:%M").replace(tzinfo=BJT).timestamp() for x in h["time"]]
-    return t, h["precipitation"], h["wind_gusts_10m"]
+    # Pa = Σ Kⁱ·P(i天前)，K=0.85；w = min(1, Pa/100)——与 panel.js 同口径
+    dl = d.get("daily", {})
+    days, sums = dl.get("time", []), dl.get("precipitation_sum", [])
+    today = datetime.now(BJT).strftime("%Y-%m-%d")
+    pa = 0.0
+    past = [(dd, v) for dd, v in zip(days, sums) if dd < today and v is not None]
+    for i, (_dd, v) in enumerate(reversed(past)):      # i=0 是昨天
+        pa += (0.85 ** i) * v
+    w = min(1.0, pa / 100.0)
+    return t, h["precipitation"], h["wind_gusts_10m"], w
 
 
 def assess(lat, lng, pts, fc, wx, now_ep, pct_tab):
@@ -116,7 +126,7 @@ def assess(lat, lng, pts, fc, wx, now_ep, pct_tab):
     relevant = bool(in_range) or closest["dist"] <= rr
 
     # 风雨窗口（含最近时刻的那段）
-    t, pr, gu = wx
+    t, pr, gu, soil_w = wx
     rain = past = future = 0
     win = None
     if relevant:
@@ -146,14 +156,15 @@ def assess(lat, lng, pts, fc, wx, now_ep, pct_tab):
                     future += v
     rain, past, future = round(rain), round(past), round(future)
 
-    # 档位（简化：雨臂 + 风臂）
+    # 档位：雨臂按土壤湿度动态下调（与 panel.js 同口径）+ 风臂
     pw = int(closest["power"] or 0)
+    wet = 1 - 0.4 * soil_w
     level = 1
-    if rain >= 60 or (closest["dist"] < wr and pw >= 8):
+    if rain >= 60 * wet or (closest["dist"] < wr and pw >= 8):
         level = 2
-    if rain >= 150 or (closest["dist"] < 200 and pw >= 10):
+    if rain >= 150 * wet or (closest["dist"] < 200 and pw >= 10):
         level = 3
-    if rain >= 250 or (closest["dist"] < 100 and pw >= 14):
+    if rain >= 250 or (closest["dist"] < 100 and pw >= 14):   # 档4 不随湿度下调
         level = 4
 
     # 阶段
@@ -167,7 +178,7 @@ def assess(lat, lng, pts, fc, wx, now_ep, pct_tab):
         if rec and len(rec["v"]) >= 10:
             pct = round(100 * sum(1 for v in rec["v"] if v <= rain) / len(rec["v"]))
     return dict(dist=round(closest["dist"]), pw=pw, rr=round(rr), dirf=dirf,
-                relevant=relevant, rain=rain, past=past, future=future,
+                relevant=relevant, rain=rain, past=past, future=future, soil=round(soil_w, 2),
                 level=level, phase=phase, pct=pct, win=win)
 
 
@@ -180,7 +191,7 @@ def main():
     name, pts, fc = load_storm(tfid)
     now = datetime.now(timezone.utc).timestamp()
     print(f"=== {name} ({tfid}) · 现在 {datetime.fromtimestamp(now, BJT):%Y-%m-%d %H:%M} 北京时 ===\n")
-    print(f"{'城市':<7}{'距离':>7}{'雨半径':>7}{'向':>5}{'相关':>5}{'过程':>6}{'已下':>6}{'待下':>6}{'档':>3}{'阶段':>7}{'分位':>5}")
+    print(f"{'城市':<7}{'距离':>7}{'雨半径':>7}{'向':>5}{'相关':>5}{'过程':>6}{'已下':>6}{'土湿':>6}{'档':>3}{'阶段':>7}{'分位':>5}")
     print("-" * 72)
     rows = []
     for c in CITIES:
@@ -197,7 +208,7 @@ def main():
         rows.append((c, lat, lng, wx, r))
         d = f"{r['dirf']:.2f}" if r["dirf"] is not None else "  - "
         print(f"{c:<7}{r['dist']:6d}km{r['rr']:6d}km{d:>6}{'是' if r['relevant'] else '否':>5}"
-              f"{r['rain']:5d}mm{r['past']:5d}mm{r['future']:5d}mm{r['level']:3d}"
+              f"{r['rain']:5d}mm{r['past']:5d}mm{r['soil']:6.2f}{r['level']:3d}"
               f"{r['phase']:>8}{(str(r['pct'])+'%') if r['pct'] is not None else '-':>6}")
 
     if sweep:
