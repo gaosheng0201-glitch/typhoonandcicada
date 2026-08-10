@@ -637,12 +637,16 @@ const ImpactPanel = (() => {
       if (fc && fc.points.length) fcEndTs = fc.points[fc.points.length - 1].time;
     }
 
-    // 停留型是「威胁」描述，只在台风确实会缓慢碾过你所在区域时才成立——
-    // 刚生成、远在洋面上移速慢的弱台风（海神教训）不算停留威胁，别贴标签。
-    // 判据 = 中心进你影响半径 且（真慢 或 在你附近滞留够久）——16km/h 只影响你半天
-    // 的正常速度台风不算停留（荔湾教训）；移速不慢但贴着你走十几小时的，才是真威胁。
+    /* 停留型是「威胁」描述，判据要**成因 + 后果**都够，三条腿缺一不可：
+       ① 空间：中心确实进你的影响半径——刚生成、远在洋面上的慢台风不算（海神教训）；
+       ② 成因：移速真慢（<10km/h）**或**在你附近滞留够久（≥24h）——16km/h 只影响你
+          半天的常速台风不算（荔湾教训），而移速不慢却贴着你走十几小时的才是真威胁；
+       ③ 后果：过程雨量确实到了暴雨量级。停留型真正致灾的是「雨长时间累积在同一处」
+          （美莎克停滞广西 600mm+），滞留 30 小时却只下 20mm 并不构成威胁——只讲滞留
+          不讲累积，等于把「慢」本身当危险。门槛随土壤湿度下调，与其他判定同口径。 */
     const stalling = durationH !== null && durationH >= STALL_HOURS;
-    const slowThreat = closest.dist < wr && (slowMover || stalling);
+    const accumHeavy = rain >= 50 * wet;
+    const slowThreat = closest.dist < wr && (slowMover || stalling) && accumHeavy;
 
     return { closest, galeR, galeREst, inRange, win, rain, rainPast, rainFuture, rainSrc,
              peakRain, peakGust, phase, postRain24,
