@@ -82,7 +82,9 @@ def load_storm(tfid):
 
 
 def load_wx(lat, lng):
-    """逐时风雨（past_days 与前端同为 7）+ 前期影响雨量 Pa 的土壤饱和度。"""
+    """逐时风雨 + 前期影响雨量 Pa 的土壤饱和度。
+    一次取 14 天（前端是 hourly 7 天 + daily 14 天两次请求），这里合并成一次；
+    窗口搜索同样限定在最近点 ±36/48h，故与前端结果一致。"""
     d = get(f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lng}"
             f"&hourly=precipitation,wind_gusts_10m&daily=precipitation_sum"
             f"&past_days=14&forecast_days=7&timezone=Asia%2FShanghai")
