@@ -472,8 +472,8 @@ const ImpactPanel = (() => {
               startTs: inRange[0].time, endTs: endP.time,
               src: "几何", open: !endPoint && stillInRangeAtEnd };
     }
-    // 相关性门槛：台风最近距离远超风圈时，本地降雨与台风无关，不建时间窗、不归因
-    const relevant = inRange.length > 0 || closest.dist <= warnRadius(closest) * 1.25;
+    // 相关性门槛：用「降雨相关半径」而非风圈——外围雨带比风圈远得多（杭州教训）
+    const relevant = inRange.length > 0 || closest.dist <= rainRadius(closest);
     let rain, rainSrc = "演示估算", peakRain = null, peakGust = null;
     if (fdata && !relevant) {
       rain = 0;
@@ -1714,6 +1714,16 @@ const ImpactPanel = (() => {
      估算表在 data.js（全站唯一权威来源，与地图风圈共用）。 */
   function warnRadius(p) {
     return maxRadius(p) || TyphoonData.estGaleRadius(p && p.power);
+  }
+
+  /* 降雨相关半径(km)：**风的范围 ≠ 雨的范围**。7 级风圈衡量的是风，而台风的螺旋
+     雨带向外延伸数百公里（台风水平尺度 500~1000 km）——中心还在数百公里外时，
+     外围暴雨可能先到。教训：白海豚（8 级、深入内陆）中心距杭州 257 km，超出
+     「风圈160×1.25=200」判「与台风无关」，可杭州正连下三天、累计 186 mm 大暴雨，
+     官方同期也把江浙沪划入「危险半圆」。故雨的相关性单独用更大的半径。
+     夹在 [300,600]：下限保住弱残涡的强降雨（美莎克教训），上限防止全国都算台风账。 */
+  function rainRadius(p) {
+    return Math.min(600, Math.max(300, warnRadius(p) * 2.5));
   }
   /* 数据时间均为北京时间：显式按 +08:00 解析，海外浏览器也能与 Date.now() 正确比较 */
   function ptime(p) { return new Date(p.time.replace(" ", "T") + "+08:00").getTime(); }
