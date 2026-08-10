@@ -574,6 +574,11 @@ const ImpactPanel = (() => {
       const centerGone = !centerNear && receding;       // 中心确已离开影响半径且在远离
       const windowDone = !win.open && nowT > win.endT;   // 本地风雨窗也已结束
       phase = (windowDone && centerGone) ? "after" : "during";
+    } else if (!win && relevant && ptime(closest) < nowT) {
+      // 兜底：拿不到风雨窗口、但台风最近点确已成为过去 = 这是「已经过去」。
+      // 模式序列再长也有尽头，超出回溯范围时绝不能退化成「风雨会来」——
+      // 一场台风对一座城市是完整事件，事件的每个时刻都得说对（红霞教训）。
+      phase = "after";
     }
     if (win) durationH = (win.endT - win.startT) / 3.6e6;
 
@@ -796,7 +801,9 @@ const ImpactPanel = (() => {
       const d = await fetchJSON2(
         `https://api.open-meteo.com/v1/forecast?latitude=${P.loc.lat}&longitude=${P.loc.lng}` +
         `&hourly=precipitation,wind_gusts_10m&current=precipitation,wind_gusts_10m` +
-        `&past_days=2&forecast_days=7&timezone=Asia%2FShanghai`);
+        // past_days 要盖住**整个事件周期**：只留 2 天的话，台风过境两天后那段雨会从
+        // 序列里滑出，窗口消失 → 半个月前过境的台风竟显示「风雨会来」。取 7 天。
+        `&past_days=7&forecast_days=7&timezone=Asia%2FShanghai`);
       P.forecast[key] = {
         at: Date.now(),
         ts: d.hourly.time, // 北京钟面原文，用于展示
