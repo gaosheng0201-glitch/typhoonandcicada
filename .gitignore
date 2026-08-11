@@ -5,9 +5,11 @@ archive/
 fetcher/.cache/
 docs/data/extract-queue/
 
-# 视频制作工作目录（与台风站独立）：node_modules 里的 ffmpeg/ffprobe 静态二进制
-# 单个就有 40~73MB，全目录 399MB——一旦误入 git 历史几乎无法清除
+# 视频制作与个人工作流内容（与台风站独立，同「宣传稿.md」的既定做法：不入库）
+# 其中 node_modules 里的 ffmpeg/ffprobe 静态二进制单个就有 40~73MB、全目录 399MB
+# ——一旦误入 git 历史几乎无法清除，且超出 GitHub 单文件 100MB 限制
 node_modules/
-videos/**/out/
+videos/
 *.mp4
 *.mov
+日成Risen｜解释性动效长期工作流*.md
