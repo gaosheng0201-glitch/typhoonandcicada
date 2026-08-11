@@ -12,6 +12,9 @@
 用法：
   python3 scripts/sanity_check.py 202613                 # 指定台风，当前时刻
   python3 scripts/sanity_check.py 202613 --sweep         # 叠加多时刻推演（稳定性）
+  python3 scripts/sanity_check.py 202610 --at 2026-07-04T12 --cities 南宁市,柳州市
+                                                          # 历史回放：注入当时时刻 +
+                                                          # 用再分析实况，检验判据边界
 """
 import json
 import math
@@ -79,6 +82,27 @@ def load_storm(tfid):
             break
     fc = fcs.get("中国") or (list(fcs.values())[0] if fcs else [])
     return d.get("name"), pts, fc
+
+
+def load_wx_archive(lat, lng, at_ep):
+    """历史回放用 ERA5 再分析实况（archive API）：取 [at−14d, at+7d]。
+    注意这是**实况回放**，检验的是「判据在真实天气下会说什么」，
+    不是「当时的预报准不准」（我们没有存历史预报）。"""
+    s = datetime.fromtimestamp(at_ep - 14 * 86400, BJT).strftime("%Y-%m-%d")
+    e = datetime.fromtimestamp(at_ep + 7 * 86400, BJT).strftime("%Y-%m-%d")
+    d = get(f"https://archive-api.open-meteo.com/v1/archive?latitude={lat}&longitude={lng}"
+            f"&start_date={s}&end_date={e}&hourly=precipitation,wind_gusts_10m"
+            f"&daily=precipitation_sum&timezone=Asia%2FShanghai")
+    h = d["hourly"]
+    t = [datetime.strptime(x, "%Y-%m-%dT%H:%M").replace(tzinfo=BJT).timestamp() for x in h["time"]]
+    dl = d.get("daily", {})
+    days, sums = dl.get("time", []), dl.get("precipitation_sum", [])
+    cutoff = datetime.fromtimestamp(at_ep, BJT).strftime("%Y-%m-%d")
+    pa = 0.0
+    past = [(dd, v) for dd, v in zip(days, sums) if dd < cutoff and v is not None]
+    for i, (_dd, v) in enumerate(reversed(past)):
+        pa += (0.85 ** i) * v
+    return t, h["precipitation"], h["wind_gusts_10m"], min(1.0, pa / 100.0)
 
 
 def load_wx(lat, lng):
@@ -158,16 +182,29 @@ def assess(lat, lng, pts, fc, wx, now_ep, pct_tab):
                     future += v
     rain, past, future = round(rain), round(past), round(future)
 
-    # 档位：雨臂按土壤湿度动态下调（与 panel.js 同口径）+ 风臂
+    # 档位（与 panel.js 同口径）：雨臂随土壤湿度下调；风臂用**本地实际峰值阵风**
     pw = int(closest["power"] or 0)
     wet = 1 - 0.4 * soil_w
     level = 1
-    if rain >= 60 * wet or (closest["dist"] < wr and pw >= 8):
+    if rain >= 60 * wet:
         level = 2
-    if rain >= 150 * wet or (closest["dist"] < 200 and pw >= 10):
+    if rain >= 150 * wet:
         level = 3
-    if rain >= 250 or (closest["dist"] < 100 and pw >= 14):   # 档4 不随湿度下调
+    if rain >= 250:                      # 档4 不随湿度下调
         level = 4
+    pgust = None
+    if win:
+        i0 = next(i for i, tt in enumerate(t) if tt >= win[0])
+        i1 = next(i for i in range(len(t) - 1, -1, -1) if t[i] <= win[1])
+        pgust = max((gu[i] or 0) for i in range(i0, i1 + 1)) if i1 >= i0 else None
+    if pgust is not None:
+        if pgust >= 89:  level = max(level, 2)     # 阵风10级·黄
+        if pgust >= 118: level = max(level, 3)     # 阵风12级·橙
+        if pgust >= 150: level = max(level, 4)     # 阵风14级·红
+    else:
+        if closest["dist"] < wr and pw >= 8:   level = max(level, 2)
+        if closest["dist"] < 200 and pw >= 10: level = max(level, 3)
+    if closest["dist"] < 100 and pw >= 14:     level = max(level, 4)   # 安全网
 
     # 阶段
     phase = "approach"
@@ -181,29 +218,51 @@ def assess(lat, lng, pts, fc, wx, now_ep, pct_tab):
             pct = round(100 * sum(1 for v in rec["v"] if v <= rain) / len(rec["v"]))
     # 内涝清单是否会推给「没勾低洼/商铺」的普通城市居民（与 panel.js 同口径）
     flood = bool(relevant and rain >= 50 * wet and phase != "after")
+    # 本地风雨持续时长，及「风雨持续时间长」提示是否触发（与 panel.js 同口径）
+    dur_h = (win[1] - win[0]) / 3600 if win else None
+    accum_heavy = rain >= 50 * wet
+    long_rain = bool(relevant and dur_h is not None and dur_h >= 24 and accum_heavy)
+    slow_threat = bool(closest["dist"] < wr and accum_heavy)   # 移速另算，此处只看几何+雨量
     return dict(dist=round(closest["dist"]), pw=pw, rr=round(rr), dirf=dirf,
                 relevant=relevant, rain=rain, past=past, future=future, soil=round(soil_w, 2),
-                level=level, phase=phase, pct=pct, win=win, flood=flood)
+                level=level, phase=phase, pct=pct, win=win, flood=flood,
+                durH=dur_h, longRain=long_rain, gust=round(pgust) if pgust else None)
+
+
+def _opt(name, default=None):
+    for i, a in enumerate(sys.argv):
+        if a == name and i + 1 < len(sys.argv):
+            return sys.argv[i + 1]
+    return default
 
 
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    args = [a for a in args if a not in (_opt("--at"), _opt("--cities"))]
     sweep = "--sweep" in sys.argv
     tfid = args[0] if args else "202613"
+    at = _opt("--at")            # 历史回放时刻，如 2026-07-04T12
+    cities_opt = _opt("--cities")
     coords = load_city_coords()
     pct_all = json.loads((ROOT / "docs" / "data" / "rain-percentile.json").read_text(encoding="utf-8"))["d"]
     name, pts, fc = load_storm(tfid)
-    now = datetime.now(timezone.utc).timestamp()
-    print(f"=== {name} ({tfid}) · 现在 {datetime.fromtimestamp(now, BJT):%Y-%m-%d %H:%M} 北京时 ===\n")
-    print(f"{'城市':<7}{'距离':>7}{'雨半径':>7}{'向':>5}{'相关':>5}{'过程':>6}{'已下':>6}{'土湿':>6}{'档':>3}{'阶段':>7}{'分位':>5}{'内涝单':>7}")
+    if at:
+        now = datetime.strptime(at, "%Y-%m-%dT%H").replace(tzinfo=BJT).timestamp()
+    else:
+        now = datetime.now(timezone.utc).timestamp()
+    city_list = [c.strip() for c in cities_opt.split(",")] if cities_opt else CITIES
+    tag = "历史回放" if at else "现在"
+    print(f"=== {name} ({tfid}) · {tag} {datetime.fromtimestamp(now, BJT):%Y-%m-%d %H:%M} 北京时 ===\n")
+    print(f"{'城市':<7}{'距离':>7}{'雨半径':>7}{'向':>5}{'相关':>5}{'过程':>6}{'已下':>6}{'土湿':>6}{'阵风':>8}{'档':>3}{'阶段':>7}{'持续':>7}{'长雨提示':>9}")
     print("-" * 72)
     rows = []
-    for c in CITIES:
+    for c in city_list:
         if c not in coords:
+            print(f"  {c}: 不在区县库中，跳过")
             continue
         lat, lng = coords[c]
         try:
-            wx = load_wx(lat, lng)
+            wx = load_wx_archive(lat, lng, now) if at else load_wx(lat, lng)
         except Exception as e:
             print(f"{c:<7} 降水拉取失败: {e}")
             continue
@@ -212,9 +271,9 @@ def main():
         rows.append((c, lat, lng, wx, r))
         d = f"{r['dirf']:.2f}" if r["dirf"] is not None else "  - "
         print(f"{c:<7}{r['dist']:6d}km{r['rr']:6d}km{d:>6}{'是' if r['relevant'] else '否':>5}"
-              f"{r['rain']:5d}mm{r['past']:5d}mm{r['soil']:6.2f}{r['level']:3d}"
-              f"{r['phase']:>8}{(str(r['pct'])+'%') if r['pct'] is not None else '-':>6}"
-              f"{'推送' if r['flood'] else '—':>7}")
+              f"{r['rain']:5d}mm{r['past']:5d}mm{r['soil']:6.2f}{(str(r['gust'])+'km/h') if r['gust'] else '-':>8}{r['level']:3d}"
+              f"{r['phase']:>8}{(f"{r['durH']:.0f}h" if r['durH'] else '-'):>7}"
+              f"{'⚠ 报' if r['longRain'] else '—':>9}")
 
     if sweep:
         print("\n=== 时序稳定性推演（同一城市在不同时刻查看）===")

@@ -545,11 +545,28 @@ const ImpactPanel = (() => {
     const soilW = (anteRec && typeof anteRec === "object") ? anteRec.w : 0;
     const wet = 1 - SOIL_DROP * soilW;
     let level = 1;
-    if (rain >= 60 * wet || (closest.dist < wr && power >= 8)) level = 2;
-    if (rain >= 150 * wet || (closest.dist < 200 && power >= 10)) level = 3;
+    // 雨臂：随土壤湿度动态下调
+    if (rain >= 60 * wet) level = 2;
+    if (rain >= 150 * wet) level = 3;
     // 「高危」的文案涉及听从转移安排，门槛不随土壤湿度下调——湿土提前进入戒备是
     // 合理的，但把整片长三角推到转移级别就过度了（土壤饱和时 187mm 也会触发）。
-    if (rain >= 250 || (closest.dist < 100 && power >= 14)) level = 4;
+    if (rain >= 250) level = 4;
+    /* 风臂：**用本地实际预报的峰值阵风**，对齐《台风预警信号》风级，而不是拿
+       「中心距离 + 中心强度」当代理。巴威教训：它是 10~13 级、浙江各市都在 200km
+       内，几何代理把 8 城全判「戒备」——可实测峰值阵风只有 8~9 级、嘉兴雨量仅
+       23.5mm。中心多强 ≠ 你这里多大风，这是系统性的过度预警。 */
+    const pgust = peakGust ? peakGust.v : null;
+    if (pgust !== null) {
+      if (pgust >= 89) level = Math.max(level, 2);    // 阵风10级·黄「较重」
+      if (pgust >= 118) level = Math.max(level, 3);   // 阵风12级·橙「严重」
+      if (pgust >= 150) level = Math.max(level, 4);   // 阵风14级·红
+    } else {
+      // 无模式数据时才回退到几何代理（保底，别把没数据当没风险）
+      if (closest.dist < wr && power >= 8) level = Math.max(level, 2);
+      if (closest.dist < 200 && power >= 10) level = Math.max(level, 3);
+    }
+    // 安全网：强台风中心正面压境时不放过——模式对极端阵风可能低估
+    if (closest.dist < 100 && power >= 14) level = Math.max(level, 4);
     if (slowMover && closest.dist < wr) level = Math.max(level, 3);
 
     // 阶段：来之前 / 影响进行中 / 已过境。「过没过境」看台风中心此刻在不在你的影响半径内，
