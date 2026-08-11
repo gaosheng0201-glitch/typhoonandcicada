@@ -373,7 +373,7 @@ const ImpactPanel = (() => {
     }
     if (a.phase === "during") {
       // 停留型台风：追加「被困数天怎么撑」——项目缘起（美莎克）场景
-      const stall = (a.slowThreat && ph.during_stall) ? ph.during_stall : [];
+      const stall = ((a.slowThreat || a.longRain) && ph.during_stall) ? ph.during_stall : [];
       return (ph.during || []).concat(stall, ex("during_extra"));
     }
     if (a.phase === "after") {
@@ -637,21 +637,28 @@ const ImpactPanel = (() => {
       if (fc && fc.points.length) fcEndTs = fc.points[fc.points.length - 1].time;
     }
 
-    /* 停留型是「威胁」描述，判据要**成因 + 后果**都够，三条腿缺一不可：
-       ① 空间：中心确实进你的影响半径——刚生成、远在洋面上的慢台风不算（海神教训）；
-       ② 成因：移速真慢（<10km/h）**或**在你附近滞留够久（≥24h）——16km/h 只影响你
-          半天的常速台风不算（荔湾教训），而移速不慢却贴着你走十几小时的才是真威胁；
-       ③ 后果：过程雨量确实到了暴雨量级。停留型真正致灾的是「雨长时间累积在同一处」
-          （美莎克停滞广西 600mm+），滞留 30 小时却只下 20mm 并不构成威胁——只讲滞留
-          不讲累积，等于把「慢」本身当危险。门槛随土壤湿度下调，与其他判定同口径。 */
-    const stalling = durationH !== null && durationH >= STALL_HOURS;
+    /* 两条**不同**的危险轴，别混为一谈：
+
+       A. 停留型（slowThreat）＝ 台风本身赖着不走。判据：中心进你的影响半径（挡住
+          远洋新生慢台风，海神教训）+ 移速真慢 <10km/h（挡住常速台风，荔湾教训）
+          + 过程雨量达暴雨级（只讲慢不讲累积，等于把「慢」本身当危险）。
+
+       B. 持续性降雨（longRain）＝ **你这里的雨要下很久**，与台风快慢无关。白海豚
+          教训：移速 17.5~36km/h 一点不慢，可上海风雨持续 52 小时、累计 208mm，
+          别墅负一楼与临街商铺进水。对比巴威——中心更近、阵风更大，实质降雨却只有
+          4 小时，平均雨强反而更高（5.9 vs 4.5 mm/h），过程雨量仅 23.5mm。
+          **差别几乎全在「下了多久」**：排水扛得住短时强降雨，扛不住连续两天不停。
+
+       用户关心的是「雨要下多久」，不是「台风移速多少」——移速只是中间原因。故把 B
+       独立成一条提示，而不是硬塞进「停留型」那个标签（36km/h 却叫停留型会让人困惑）。*/
     const accumHeavy = rain >= 50 * wet;
-    const slowThreat = closest.dist < wr && (slowMover || stalling) && accumHeavy;
+    const slowThreat = closest.dist < wr && slowMover && accumHeavy;
+    const longRain = relevant && durationH !== null && durationH >= STALL_HOURS && accumHeavy;
 
     return { closest, galeR, galeREst, inRange, win, rain, rainPast, rainFuture, rainSrc,
              peakRain, peakGust, phase, postRain24,
              nowWx, easing, closing, fcEndTs, relevant, soilW, dNow, centerNear,
-             level, moveKmh, slowMover, slowThreat, durationH, endPoint, stillInRangeAtEnd };
+             level, moveKmh, slowMover, slowThreat, longRain, durationH, endPoint, stillInRangeAtEnd };
   }
 
   /* 此刻天气的人话描述（小时雨强口径：<2.5 小雨 / <8 中雨 / <16 大雨 / ≥16 暴雨强度） */
@@ -1086,9 +1093,11 @@ const ImpactPanel = (() => {
       ${aiConsensusHtml(s)}
       ${waveBanner}
       ${s.active === false ? `<div class="slow-badge"><b>残余环流</b> —— 已停编，但残涡仍可能强降雨，雨的风险未结束</div>` : ""}
-      ${a.slowThreat ? `<div class="slow-badge"><b>停留型台风</b> —— ${
-        a.slowMover ? `移速仅约 ${Math.round(a.moveKmh)} km/h` : `风雨将持续约 ${Math.round(a.durationH)} 小时`
-      }，危险在雨不在风</div>` : ""}`;
+      ${((a.longRain || a.slowThreat) && a.phase !== "after") ? `<div class="slow-badge"><b>风雨持续时间长</b> —— ${
+        a.durationH >= 48 ? "预计持续两天以上" : a.durationH ? `预计持续约 ${Math.round(a.durationH)} 小时` : "预计持续偏长"
+      }，雨量会不断累积，<b>重点防内涝而不是防风</b>${
+        a.slowMover ? `<span class="muted">（台风移动缓慢，约 ${Math.round(a.moveKmh)} km/h）</span>` : ""
+      }</div>` : ""}`;
     box.querySelectorAll(".storm-chip").forEach((b) => {
       b.onclick = () => { P.focusTfid = b.dataset.tf; renderResult(); };
     });
@@ -1122,7 +1131,7 @@ const ImpactPanel = (() => {
           ? `<b>未来24小时预计仍有约 ${a.postRain24} mm 降雨</b>——过境不等于结束（模式预报）`
           : `<span class="muted">未来24小时残余降雨约 ${a.postRain24} mm（模式预报）</span>`]);
       }
-      if (a.durationH && a.phase === "approach") tl.push(["", `影响持续约 <b>${Math.round(a.durationH)} 小时</b>${a.slowThreat ? "（停留型，明显偏长）" : ""}`]);
+      if (a.durationH && a.phase === "approach") tl.push(["", `影响持续约 <b>${Math.round(a.durationH)} 小时</b>${a.slowThreat ? "（停留型，明显偏长）" : a.longRain ? "（持续偏长，雨量会累积）" : ""}`]);
       tl.push(["", `<span class="muted">时间窗来源：${a.win.src === "模式" ? "本地逐时数值预报" : "官方路径几何推算"}</span>`]);
     }
     if (a.win) {
@@ -1688,7 +1697,7 @@ const ImpactPanel = (() => {
     ctx.fillStyle = "#aaa69f";
     ctx.font = F(400, 22);
     yy += 56;
-    ctx.fillText(a.slowThreat ? "停留型台风：移速慢、下得久，危险在雨不在风"
+    ctx.fillText((a.slowThreat || a.longRain) ? "风雨持续时间长：雨量不断累积，重点防内涝而不是防风"
       : "台风强度 ≠ 你受影响的程度，距离和路径才是关键", 36, yy);
 
     /* ---- 数据宫格 ---- */
