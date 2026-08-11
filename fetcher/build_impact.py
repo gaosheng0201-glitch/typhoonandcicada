@@ -8,8 +8,11 @@ docs/data/fnv3/{tfid}.json 里的多期 ensemble_mean 轨迹（fetch_fnv3.py 产
 方法（滞后集合 lagged ensemble）：
 - 「概率」：最近 K 期预报里，有几期把台风送进城市的影响半径 → hits/of。
   期数少（刚生成的风暴只有两三期）本身就是「还看不准」的信号，如实带出。
-- 「影响半径」：150km（典型大风圈量级）+ 该时效的历史实测误差（summary
-  errorsKm 插值）——误差随时效放大，半径随之放大，这就是「校准」。
+- 「影响半径」：**随该预报点的强度动态取值**（与前端同一张 estGaleRadius 表，
+  直接从 docs/data.js 解析，避免又一处「两套尺子」）+ 该时效的历史实测误差
+  （summary errorsKm 插值）——误差随时效放大，半径随之放大，这就是「校准」。
+  早期用固定 150km，会与主判定打架：白海豚时长三角各市主判定「影响进行中·
+  124~200mm」，这里却判「未逼近」。
 - 「收敛度」：风暴刚形成时各期预报吵架，随更新趋于一致。取同一未来时刻
   （now+24h/+48h），比较最近 3 期 vs 更早 3 期预报位置的散布（km）：
   散布收窄 = 正在收敛，结论可以说硬一点；散布仍大 = 明说「还看不准」。
@@ -20,6 +23,7 @@ docs/data/fnv3/{tfid}.json 里的多期 ensemble_mean 轨迹（fetch_fnv3.py 产
 """
 import json
 import math
+import re
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -28,7 +32,44 @@ DATA = ROOT / "docs" / "data"
 OUT = DATA / "impact.json"
 
 K_RUNS = 6            # 参与统计的最近期数（12h 一期 ≈ 3 天）
-BASE_RADIUS_KM = 150  # 影响半径基数：台风大风圈的典型量级
+FALLBACK_RADIUS_KM = 150   # 该预报点无强度时的兜底半径
+
+# 蒲福风级下限（节）：与《台风预警信号》所用的风力等级对齐，用于把 FNV3 的
+# 风速（kt）换算成风力等级，再查同一张 estGaleRadius 表。
+KT_BY_LEVEL = {16: 99, 14: 81, 12: 64, 10: 48, 8: 33, 6: 21}
+
+
+def load_gale_table():
+    """**从 docs/data.js 解析 estGaleRadius 的阈值表**——全站唯一权威表在前端，
+    这里解析而非复制，否则又是一处「两套尺子」（本项目已因此踩坑四次）。"""
+    src = (ROOT / "docs" / "data.js").read_text(encoding="utf-8")
+    body = re.search(r"function estGaleRadius[^{]*\{(.+?)\n  \}", src, re.S)
+    if not body:
+        raise RuntimeError("data.js 里找不到 estGaleRadius——半径表结构变了，请同步本脚本")
+    pairs = [(int(a), int(b)) for a, b in
+             re.findall(r"pw >= (\d+)\s*\?\s*(\d+)", body.group(1))]
+    tail = re.search(r":\s*(\d+)\s*;", body.group(1))
+    if not pairs or not tail:
+        raise RuntimeError("estGaleRadius 表解析失败，请检查 data.js 写法")
+    return sorted(pairs, reverse=True), int(tail.group(1))
+
+
+GALE_TABLE, GALE_TAIL = load_gale_table()
+
+
+def radius_for(wind_kt):
+    """按该预报点的强度取影响半径（与前端 estGaleRadius 同表）。"""
+    if wind_kt is None:
+        return FALLBACK_RADIUS_KM
+    lvl = 0
+    for level, kt in sorted(KT_BY_LEVEL.items(), reverse=True):
+        if wind_kt >= kt:
+            lvl = level
+            break
+    for pw, r in GALE_TABLE:
+        if lvl >= pw:
+            return r
+    return GALE_TAIL
 CONV_LEADS_H = (24, 48)          # 在 now+这些小时处度量收敛度
 CONV_TIGHT_KM, CONV_LOOSE_KM = 120, 300
 
@@ -153,7 +194,7 @@ def storm_impact(storm, cities, now_epoch):
             if best is None:
                 continue
             dist, t, w, lead = best
-            if dist <= BASE_RADIUS_KM + err_at(summary, lead):
+            if dist <= radius_for(w) + err_at(summary, lead):
                 hit_map.setdefault(name, []).append((t, dist, w))
 
     out_cities = []
