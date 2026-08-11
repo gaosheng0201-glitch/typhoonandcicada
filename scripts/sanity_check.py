@@ -179,9 +179,11 @@ def assess(lat, lng, pts, fc, wx, now_ep, pct_tab):
         rec = pct_tab.get("_city")
         if rec and len(rec["v"]) >= 10:
             pct = round(100 * sum(1 for v in rec["v"] if v <= rain) / len(rec["v"]))
+    # 内涝清单是否会推给「没勾低洼/商铺」的普通城市居民（与 panel.js 同口径）
+    flood = bool(relevant and rain >= 50 * wet and phase != "after")
     return dict(dist=round(closest["dist"]), pw=pw, rr=round(rr), dirf=dirf,
                 relevant=relevant, rain=rain, past=past, future=future, soil=round(soil_w, 2),
-                level=level, phase=phase, pct=pct, win=win)
+                level=level, phase=phase, pct=pct, win=win, flood=flood)
 
 
 def main():
@@ -193,7 +195,7 @@ def main():
     name, pts, fc = load_storm(tfid)
     now = datetime.now(timezone.utc).timestamp()
     print(f"=== {name} ({tfid}) · 现在 {datetime.fromtimestamp(now, BJT):%Y-%m-%d %H:%M} 北京时 ===\n")
-    print(f"{'城市':<7}{'距离':>7}{'雨半径':>7}{'向':>5}{'相关':>5}{'过程':>6}{'已下':>6}{'土湿':>6}{'档':>3}{'阶段':>7}{'分位':>5}")
+    print(f"{'城市':<7}{'距离':>7}{'雨半径':>7}{'向':>5}{'相关':>5}{'过程':>6}{'已下':>6}{'土湿':>6}{'档':>3}{'阶段':>7}{'分位':>5}{'内涝单':>7}")
     print("-" * 72)
     rows = []
     for c in CITIES:
@@ -211,21 +213,23 @@ def main():
         d = f"{r['dirf']:.2f}" if r["dirf"] is not None else "  - "
         print(f"{c:<7}{r['dist']:6d}km{r['rr']:6d}km{d:>6}{'是' if r['relevant'] else '否':>5}"
               f"{r['rain']:5d}mm{r['past']:5d}mm{r['soil']:6.2f}{r['level']:3d}"
-              f"{r['phase']:>8}{(str(r['pct'])+'%') if r['pct'] is not None else '-':>6}")
+              f"{r['phase']:>8}{(str(r['pct'])+'%') if r['pct'] is not None else '-':>6}"
+              f"{'推送' if r['flood'] else '—':>7}")
 
     if sweep:
         print("\n=== 时序稳定性推演（同一城市在不同时刻查看）===")
         for c, lat, lng, wx, _ in rows[:3]:
             print(f"\n【{c}】")
-            print(f"  {'查看时刻':<18}{'相关':>5}{'过程':>7}{'已下':>7}{'待下':>7}{'档':>3}{'阶段':>8}")
-            for dh in (-36, -24, -12, 0, 12, 24, 36):
+            print(f"  {'查看时刻':<18}{'相关':>5}{'过程':>7}{'已下':>7}{'待下':>7}{'档':>3}{'阶段':>8}{'内涝单':>7}")
+            for dh in (-60, -48, -36, -24, -12, 0, 12):
                 ep = now + dh * 3600
                 tab = {"_city": pct_all.get(c)}
                 r = assess(lat, lng, pts, fc, wx, ep, tab)
                 ts = datetime.fromtimestamp(ep, BJT).strftime("%m-%d %H:%M")
                 mark = " ←现在" if dh == 0 else ""
                 print(f"  {ts:<18}{'是' if r['relevant'] else '否':>5}{r['rain']:6d}mm"
-                      f"{r['past']:6d}mm{r['future']:6d}mm{r['level']:3d}{r['phase']:>9}{mark}")
+                      f"{r['past']:6d}mm{r['future']:6d}mm{r['level']:3d}{r['phase']:>9}"
+                      f"{'推送' if r['flood'] else '—':>7}{mark}")
     return 0
 
 

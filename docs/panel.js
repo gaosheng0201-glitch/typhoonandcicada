@@ -1230,6 +1230,16 @@ const ImpactPanel = (() => {
 
     // 清单（按阶段：备灾 / 避险 / 恢复期）
     const items = phaseChecklist(a);
+    // 内涝清单：雨量到了内涝量级就给，**不等用户自认「住低洼」**。上海白海豚教训——
+    // 过程 210mm、连续两天各 91mm，别墅负一楼与临街商铺进水，而这些人未必勾了
+    // 「低洼/商铺」情境，于是精准的防内涝条目根本没送到他们眼前。内涝风险由雨量
+    // 决定，不由用户怎么给自己归类决定。已勾相应情境的不再重复。
+    const fe = P.checklists.flood_extra;
+    const floodRisk = a.relevant && a.rain >= 50 * (1 - SOIL_DROP * (a.soilW || 0));
+    if (fe && floodRisk && a.phase !== "after" &&
+        !(P.situations.has("lowland") || P.situations.has("shop"))) {
+      items.unshift(...fe.items);
+    }
     // 海浪清单：沿海/海岛 + 外海浪高达提示级时，置于最前（对海边人，海才是即时危险）
     if (wave && !wave.none && P.checklists.wave_extra) {
       const we = P.checklists.wave_extra;
