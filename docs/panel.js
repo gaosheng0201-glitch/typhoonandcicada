@@ -1015,11 +1015,16 @@ const ImpactPanel = (() => {
     let cityLine;
     if (city) {
       const LV = { high: "#e0625a", medium: "#d6a94a", low: "#8a8578" };
-      cityLine = `最近 ${city.of} 期预报中 <b style="color:${LV[city.level]}">${city.hits} 期</b>波及${P.loc.city}` +
+      cityLine = `最近 ${city.of} 期预报中 <b style="color:${LV[city.level]}">${city.hits} 期</b>把<b>台风中心</b>送到${P.loc.city}附近` +
         `，${city.window.from} – ${city.window.to} 间最接近` +
         (city.level === "low" ? `<span class="muted">（时效尚远，落点常整体偏移）</span>` : "");
     } else {
-      cityLine = `<span class="muted">最近 ${st.runsUsed} 期预报的中心路径均未逼近${P.loc.city}（不排除外围风雨）</span>`;
+      // 这里判的是**台风中心的落点**（固定 150km + 时效误差），与上方「会不会影响你」
+      // 用的动态风圈/降雨半径不是同一把尺——中心不经过 ≠ 不受影响。白海豚教训：
+      // 长三角各市中心落点都在 150km 外，却下了 124~200mm、内涝。措辞必须说死是「中心」，
+      // 否则会被读成「不影响你」，与上方「戒备·影响进行中」自相矛盾。
+      cityLine = `<span class="muted">最近 ${st.runsUsed} 期预报的<b>台风中心</b>落点都不在${P.loc.city}附近` +
+        `——中心不经过 ≠ 不受影响，外围风雨以上方判断为准</span>`;
     }
     return `<div class="ai-consensus">
       <div class="aic-head">AI 多期会商<span class="aic-src">Google FNV3 · 研究性数据 · 以官方为准</span></div>

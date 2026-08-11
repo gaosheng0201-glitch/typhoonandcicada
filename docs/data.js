@@ -83,7 +83,8 @@ const TyphoonData = (() => {
         strong: t.strong, power: t.power,
         lastTime: t.timeformate || t.time,
       }));
-      // 残涡不停追：快照里标记为 residual 的（停编 ≤48h）合并进来继续显示
+      // 残涡不停追：快照里标记为 residual 的合并进来继续显示。判定在后端 fetch.py：
+      // 停编 ≤72h **且** 残涡区仍有 ≥30mm/24h 降雨预报（雨还在就继续盯）
       try {
         const snap = await fetchJSON(`data/index.json?t=${Date.now()}`);
         for (const t of snap.typhoons || []) {
