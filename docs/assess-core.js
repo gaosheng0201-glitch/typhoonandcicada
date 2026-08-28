@@ -404,7 +404,77 @@ const AssessCore = (() => {
              level, moveKmh, slowMover, slowThreat, longRain, durationH, endPoint, stillInRangeAtEnd };
   }
 
-  return { configure, assess, localImpactTier, soilFromDaily,
+  /* 「当时所知」的台风取景：track 截断到 ts，之后的实况充当完美预报（真预报中比
+     实况末点更晚的部分接在其后）。事件层与历史回放共用此构造——快照函数的 path 只看
+     「末4点+预报」（实时下足够），回看历史时刻若不重构，历史上的强点会整个丢失
+     （实测：沙德尔 14 级掠过台州的时段在「今日视角」采样下峰值只剩②）。 */
+  function stormAsOf(storm, ts) {
+    const past = storm.track.filter((p) => ptime(p) <= ts);
+    if (!past.length) return null;                    // 事件在该时刻尚未开始
+    const futureTrack = storm.track.filter((p) => ptime(p) > ts);
+    const fc = storm.forecasts["中国"] || Object.values(storm.forecasts)[0];
+    const trackEnd = ptime(storm.track[storm.track.length - 1]);
+    const fcTail = (fc ? fc.points : []).filter((p) => ptime(p) > trackEnd);
+    const futureAll = futureTrack.concat(fcTail);
+    return { ...storm, track: past,
+             forecasts: futureAll.length ? { "中国": { points: futureAll } } : storm.forecasts };
+  }
+
+  /* ---------- 事件时间线层（Phase B） ----------
+
+     架构缺口的收口：assess() 是「时刻快照」函数，而台风对一座城市是**完整事件**——
+     所有时间连贯性问题（已下/待下、过境不改口、最强时刻、档位回落）过去只能在快照
+     函数外面逐个打补丁。assessEvent 用同一个 assess 沿时间轴自采样，把「这场台风
+     从头到尾会怎样」变成一个一等公民对象；表达层(Phase C)从它取数，不再各自为政。
+
+     语义要诚实：采样用的是**当前所知**（此刻的轨迹+预报+模式序列），回答的是
+     「以现在的认知，事件各时刻是什么状态」——不是重放历史上每一刻的当时预报
+     （那些数据我们没有存）。对「峰值档」「12 小时前 vs 现在」这类用途，这正是
+     想要的口径：同一数据源下的自洽推演。
+
+     判定口径零改动：level/phase 的每一个值都出自同一个 assess。 */
+  function assessEvent(input) {
+    const base = assess(input);
+    const ev = { base, samples: [], peakLevel: base.level, peakAt: null,
+                 levelPrev12h: null, spanStart: null, spanEnd: null };
+    if (!base.relevant) return ev;   // 与这场台风无关：没有「事件」可言
+
+    // 事件跨度：风雨窗口 ∪ 最近点，前推 12h（备灾期也属于事件）、后延至预报末端 +12h
+    const closestT = ptime(base.closest);
+    const winS = base.win ? base.win.startT : closestT;
+    const winE = base.win ? base.win.endT : closestT;
+    const fc = input.storm.forecasts["中国"] || Object.values(input.storm.forecasts)[0];
+    const fcEnd = (fc && fc.points.length) ? ptime(fc.points[fc.points.length - 1]) : closestT;
+    let start = Math.min(winS, closestT) - 12 * 3.6e6;
+    let end = Math.max(winE, closestT, fcEnd) + 12 * 3.6e6;
+
+    // 采样步长 3h；防御性上限 200 点（跨度异常大时自动放粗，绝不无界）
+    let step = 3 * 3.6e6;
+    if ((end - start) / step > 200) step = Math.ceil((end - start) / 200);
+
+    for (let ts = start; ts <= end; ts += step) {
+      const s2 = stormAsOf(input.storm, ts);          // 「当时所知」取景，历史强点不丢
+      if (!s2) continue;
+      const a = assess({ ...input, storm: s2, nowT: ts });
+      ev.samples.push({ t: ts, level: a.level, phase: a.phase, easing: a.easing,
+                        rainPast: a.rainPast, rainFuture: a.rainFuture });
+      if (a.level > ev.peakLevel) { ev.peakLevel = a.level; ev.peakAt = ts; }
+    }
+    // 峰值时刻兜底：若峰值就是当前档且循环中未更高，peakAt 取首个达到峰值档的采样点
+    if (ev.peakAt == null) {
+      const hit = ev.samples.find((sm) => sm.level === ev.peakLevel);
+      ev.peakAt = hit ? hit.t : input.nowT;
+    }
+    // 「12 小时前会怎么说」：同样用当时所知取景，直接精确评估
+    const sPrev = stormAsOf(input.storm, input.nowT - 12 * 3.6e6);
+    ev.levelPrev12h = sPrev
+      ? assess({ ...input, storm: sPrev, nowT: input.nowT - 12 * 3.6e6 }).level
+      : null;
+    ev.spanStart = start; ev.spanEnd = end;
+    return ev;
+  }
+
+  return { configure, assess, assessEvent, stormAsOf, localImpactTier, soilFromDaily,
            haversine, bearing, ptime, maxRadius, warnRadius, rainRadius,
            SLOW_KMH, STALL_HOURS, SOIL_K, WM_SOIL_MM, SOIL_DROP };
 })();

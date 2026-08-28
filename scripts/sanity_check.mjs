@@ -10,6 +10,9 @@
      node scripts/sanity_check.mjs 202618
      node scripts/sanity_check.mjs 202618 --sweep
      node scripts/sanity_check.mjs 202610 --at 2026-07-04T12 --cities 南宁市,北海市
+     node scripts/sanity_check.mjs 202618 --event --cities 台州市,温州市
+                                          # 事件时间线层(Phase B)：整场事件的档位曲线、
+                                          # 峰值档与此刻档的关系（「曾4现2」类事实）
 */
 import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
@@ -125,11 +128,8 @@ const nowMs = at ? new Date(`${at}:00:00+08:00`).getTime() : Date.now();
    杭州 closest 变成 902km——因为它的最近点在回放时刻的 1 小时后，被错误的
    「末4点」结构漏掉了）。 */
 if (at) {
-  const pt = (s) => new Date(s.replace(" ", "T") + "+08:00").getTime();
-  const past = storm.track.filter((q) => pt(q.time) <= nowMs);
-  const future = storm.track.filter((q) => pt(q.time) > nowMs);
-  if (past.length) storm = { ...storm, track: past,
-    forecasts: future.length ? { "中国": { points: future } } : storm.forecasts };
+  const s2 = AssessCore.stormAsOf(storm, nowMs);   // 与事件层同一个「当时所知」构造
+  if (s2) storm = s2;
 }
 
 console.log(`=== ${name} (${tfid}) · ${at ? "历史回放" : "现在"} ${fmtBJT(nowMs)} 北京时 · [node·与前端同核] ===\n`);
@@ -147,6 +147,33 @@ for (const c of cities) {
     soilW: wx.soil.w, obs: null, nowT: nowMs });
   rows.push({ c, lat, lng, wx });
   console.log(row(c, a, wx.soil));
+}
+
+const evMode = process.argv.includes("--event");
+if (evMode) {
+  console.log("\n=== 事件时间线层（assessEvent，与前端同核）===");
+  const LV = ["", "①关注", "②准备", "③戒备", "④高危"];
+  for (const { c, lat, lng, wx } of rows) {
+    const ev = AssessCore.assessEvent({ loc: { lat, lng }, storm, fdata: wx.fdata,
+      soilW: wx.soil.w, obs: null, nowT: nowMs });
+    if (!ev.samples.length) { console.log(`\n【${c}】不相关，无事件`); continue; }
+    // 档位曲线压缩显示：连续同档合并为「档×小时数」
+    const runs = [];
+    for (const sm of ev.samples) {
+      const last = runs[runs.length - 1];
+      if (last && last.level === sm.level) last.n++;
+      else runs.push({ level: sm.level, n: 1 });
+    }
+    const stepH = Math.round((ev.samples[1].t - ev.samples[0].t) / 3.6e6);
+    const curve = runs.map((r) => `${r.level}×${r.n * stepH}h`).join(" → ");
+    console.log(`\n【${c}】事件跨度 ${fmtBJT(ev.spanStart)} ~ ${fmtBJT(ev.spanEnd)}（采样 ${ev.samples.length} 点 / ${stepH}h 步长）`);
+    console.log(`  档位曲线: ${curve}`);
+    console.log(`  事件峰值: ${LV[ev.peakLevel]}（${ev.peakAt ? fmtBJT(ev.peakAt) : "-"}）  此刻: ${LV[ev.base.level]}  12h前: ${LV[ev.levelPrev12h]}` +
+      (ev.peakLevel > ev.base.level ? `  ← 已从峰值回落（「曾${ev.peakLevel}现${ev.base.level}」）` : ""));
+    // 一致性自检：峰值必须 ≥ 所有采样与此刻档
+    const bad = ev.samples.filter((sm) => sm.level > ev.peakLevel).length;
+    if (bad || ev.base.level > ev.peakLevel) console.log(`  ⚠️ 一致性失败：存在高于峰值的采样`);
+  }
 }
 
 if (sweep) {
