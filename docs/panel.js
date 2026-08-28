@@ -565,8 +565,7 @@ const ImpactPanel = (() => {
       if (closest.dist < wr && power >= 8) level = Math.max(level, 2);
       if (closest.dist < 200 && power >= 10) level = Math.max(level, 3);
     }
-    // 安全网：强台风中心正面压境时不放过——模式对极端阵风可能低估
-    if (closest.dist < 100 && power >= 14) level = Math.max(level, 4);
+    // 安全网移到下方——它要看「此刻/未来」的中心，而 cNow 在阶段判定处才算出来
     if (slowMover && closest.dist < wr) level = Math.max(level, 3);
 
     // 阶段：来之前 / 影响进行中 / 已过境。「过没过境」看台风中心此刻在不在你的影响半径内，
@@ -594,6 +593,13 @@ const ImpactPanel = (() => {
     const curRadius = TyphoonData.estGaleRadius(Math.round(cNow.power)) || wr;
     const centerNear = dNow <= curRadius * 1.5;   // 中心仍在影响半径 1.5 倍内 = 仍在近旁
     const receding = dAhead > dNow + 5;            // 3 小时后更远 = 正在远离
+    /* 安全网：强台风正面压境时不放过——模式对极端阵风可能低估。但**只看此刻或未来**，
+       不看历史：沙德尔教训——14 级中心从台州 52km 外掠过 7 小时后，中心已远到 199km、
+       减弱为 10 级，台州实际只下 31mm、阵风 10 级，却仍被判「高危·听从转移安排」。
+       台风最强的那一刻过去了，风险等级就该回落——等级面向「接下来该做什么」。 */
+    const strongNow = dNow < 100 && Math.round(cNow.power) >= 14;
+    const strongSoon = path.some((p) => ptime(p) >= nowT && p.dist < 100 && (parseInt(p.power) || 0) >= 14);
+    if (strongNow || strongSoon) level = Math.max(level, 4);
     let phase = "approach";
     if (win && nowT >= win.startT) {
       const centerGone = !centerNear && receding;       // 中心确已离开影响半径且在远离
@@ -1073,6 +1079,25 @@ const ImpactPanel = (() => {
       aheadBrief = `<div class="timebrief">${txt}${bg}</div>`;
     }
 
+    /* 事件级严重度：这场台风对本地的「最近/最强时刻」。**即使此刻已减弱远离，那一刻
+       也是这个事件的一部分，不该被抹掉**——台风影响是多变的，某个时刻风雨小并不等于
+       这场台风对本地不严重。行动等级（关注/准备/戒备/高危）回答「你此刻该做什么」，
+       这一行回答「这场台风整体对你意味着什么」，两者并存。
+       沙德尔·台州教训：14 级从 52km 外掠过 7 小时后，中心已远到 199km、减弱为 10 级，
+       行动等级理应回落，但「曾以 14 级近距离掠过」这个事实必须留在页面上。 */
+    let peakBrief = "";
+    if (a.relevant && a.closest) {
+      const cpw = parseInt(a.closest.power) || 0;
+      const cd = Math.round(a.closest.dist);
+      const passed = ptime(a.closest) < Date.now();
+      const hrs = Math.round(Math.abs(Date.now() - ptime(a.closest)) / 3.6e6);
+      const when = passed ? (hrs < 1 ? "刚刚" : `${hrs} 小时前`) : (hrs < 1 ? "即将" : `约 ${hrs} 小时后`);
+      const gustPeak = a.peakGust ? `，本地峰值阵风约 ${gustLevel(a.peakGust.v)} 级` : "";
+      if (cpw >= 10 && cd < 250) {
+        peakBrief = `<div class="timebrief"><b>本次最强时刻</b>：${when}以 <b>${cpw} 级</b>从你 ${cd} km 外经过${gustPeak}</div>`;
+      }
+    }
+
     let timeBrief;
     if (a.win && a.phase === "during") {
       timeBrief = `${fmtTime(a.win.startTs)}已开始${a.win.open ? "，预报期内持续" : `，预计 ${fmtTime(a.win.endTs)}基本结束`}`;
@@ -1111,6 +1136,7 @@ const ImpactPanel = (() => {
       <div class="headline">${results.length > 1 ? `${s.name}：` : ""}${headlineFor(a)}</div>
       <div class="timebrief">${timeBrief} · 距 ${Math.round(haversine(P.loc.lat, P.loc.lng, last.lat, last.lng))} km</div>
       ${a.nowWx ? `<div class="timebrief">此刻本地：${nowWxDesc(a.nowWx)}<span class="muted">（${a.nowWx.obs ? `最近气象站 ${a.nowWx.distKm}km · ${a.nowWx.ageMin} 分钟前实测` : "模式实况，以体感为准"}）</span></div>` : ""}
+      ${peakBrief}
       ${aheadBrief}
       ${aiConsensusHtml(s)}
       ${waveBanner}
