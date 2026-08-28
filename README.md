@@ -86,7 +86,8 @@ fetcher/build_rain_percentile.py 由上表聚合出城市降雨分位表（前�
 fetcher/fetch_warnings.py    官方预警（CMA，经 WMO CAP 公开中继）→ warnings.json
 fetcher/build_adcodes.py     全国 adcode→中文名（同源 DataV，供预警按区县匹配）
 fetcher/build_extract.py     批量抽取脚手架（官方路径定清单/抓源/引文回查/校验）
-scripts/sanity_check.py      判定口径抽样自检：多台风×多城市×多时刻回归与稳定性推演
+docs/assess-core.js          评估纯函数核心：前端与校准脚本共用的**唯一一把尺子**
+scripts/sanity_check.mjs     判定抽样自检(node)：与前端共用 assess-core，多台风×多城市×多时刻
 docs/                        静态前端（MapLibre GL JS，深色底图），GitHub Pages 直接发布此目录
 docs/data/                   抓取器输出（快照 + 对照库 + 历史档案 + 降雨底座 + 预警 + FNV3 复盘）
 .github/workflows/           云端定时：update-data(30min) / warnings(10min) / fnv3(6h) / validate(PR 校验)
@@ -95,7 +96,7 @@ docs/data/                   抓取器输出（快照 + 对照库 + 历史档案
 改判定逻辑后建议跑一次抽样自检，它复现前端的核心判据、并能注入任意「现在时刻」：
 
 ```bash
-python3 scripts/sanity_check.py 202613 --sweep
+node scripts/sanity_check.mjs 202613 --sweep
 ```
 
 对照库分两层，`build_gap` / `build_rain_history` 是「自动覆盖主干」（客观数据保证每座
