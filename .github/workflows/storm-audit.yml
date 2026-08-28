@@ -1,0 +1,45 @@
+# 台风结束后的自动全审计：每天检查一次「哪场台风已停编 ≥72h 且未审计」，
+# 自动选城跑解除态全时序审计（远洋场跑零误报抽查），报告入库为公开档案
+# （docs/data/audits/，Pages 直接发布，人人可复核）。
+# 审计逻辑在 scripts/sanity_check.mjs——与前端共用 assess-core.js 那把唯一尺子。
+# 发现异常（误挂/闪烁/远洋误报）→ 本 Action 标红，即是通知。
+name: Storm post-event audit
+
+on:
+  schedule:
+    - cron: "40 18 * * *"   # 每天 18:40 UTC（北京时凌晨 02:40，避开数据更新高峰）
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: push-data
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Run post-event audits
+        id: run
+        continue-on-error: true          # 先保住报告提交，最后再按结果定红绿
+        run: node scripts/audit_storms.mjs
+      - name: Commit audit reports
+        run: |
+          if ! git diff --quiet docs/data/audits 2>/dev/null || [ -n "$(git status --porcelain docs/data/audits)" ]; then
+            git config user.name "typhoon-data-bot"
+            git config user.email "actions@users.noreply.github.com"
+            git add docs/data/audits
+            git commit -m "audit: 台风结束后自动全审计报告"
+            git pull --rebase --autostash
+            git push
+          fi
+      - name: Flag issues
+        if: steps.run.outcome == 'failure'
+        run: |
+          echo "::warning::审计发现告警——见 docs/data/audits/ 最新报告"
+          exit 1

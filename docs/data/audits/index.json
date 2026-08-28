@@ -1,0 +1,140 @@
+{
+ "202609": {
+  "name": "巴威",
+  "auditedAt": "2026-08-28 07:27 UTC",
+  "ok": true,
+  "issues": [],
+  "cities": [
+   "宣城市",
+   "威海市",
+   "宿迁市",
+   "芜湖市"
+  ],
+  "remote": false
+ },
+ "202611": {
+  "name": "海神",
+  "auditedAt": "2026-08-28 07:27 UTC",
+  "ok": true,
+  "issues": [],
+  "cities": [
+   "上海市区",
+   "温州市",
+   "福州市",
+   "深圳市"
+  ],
+  "remote": true
+ },
+ "202612": {
+  "name": "红霞",
+  "auditedAt": "2026-08-28 07:26 UTC",
+  "ok": true,
+  "issues": [],
+  "cities": [
+   "惠州市",
+   "韶关市",
+   "汕尾市",
+   "东莞市"
+  ],
+  "remote": false
+ },
+ "202613": {
+  "name": "白海豚",
+  "auditedAt": "2026-08-28 07:28 UTC",
+  "ok": true,
+  "issues": [],
+  "cities": [
+   "景德镇市",
+   "上饶市",
+   "温州市",
+   "九江市"
+  ],
+  "remote": false
+ },
+ "202614": {
+  "name": "鲸鱼",
+  "auditedAt": "2026-08-28 07:28 UTC",
+  "ok": true,
+  "issues": [],
+  "cities": [
+   "上海市区",
+   "温州市",
+   "福州市",
+   "深圳市"
+  ],
+  "remote": true
+ },
+ "202615": {
+  "name": "灿鸿",
+  "auditedAt": "2026-08-28 07:28 UTC",
+  "ok": true,
+  "issues": [],
+  "cities": [
+   "上海市区",
+   "温州市",
+   "福州市",
+   "深圳市"
+  ],
+  "remote": true
+ },
+ "202616": {
+  "name": "琵鹭",
+  "auditedAt": "2026-08-28 07:28 UTC",
+  "ok": true,
+  "issues": [],
+  "cities": [
+   "上海市区",
+   "温州市",
+   "福州市",
+   "深圳市"
+  ],
+  "remote": true
+ },
+ "202617": {
+  "name": "浪卡",
+  "auditedAt": "2026-08-28 07:28 UTC",
+  "ok": true,
+  "issues": [],
+  "cities": [
+   "上海市区",
+   "温州市",
+   "福州市",
+   "深圳市"
+  ],
+  "remote": true
+ },
+ "202620": {
+  "name": "简拉维",
+  "auditedAt": "2026-08-28 07:28 UTC",
+  "ok": true,
+  "issues": [],
+  "cities": [
+   "泉州市",
+   "莆田市",
+   "桃园市",
+   "新北市"
+  ],
+  "remote": false
+ },
+ "20260015": {
+  "name": "热带低压",
+  "auditedAt": "2026-08-28 07:27 UTC",
+  "ok": true,
+  "issues": [],
+  "cities": [
+   "上海市区",
+   "温州市",
+   "福州市",
+   "深圳市"
+  ],
+  "remote": true
+ },
+ "20260021": {
+  "name": "热带低压",
+  "auditedAt": "2026-08-28 07:30 UTC",
+  "ok": true,
+  "skipped": "数据源无此编号的详情接口",
+  "cities": [],
+  "remote": false
+ }
+}

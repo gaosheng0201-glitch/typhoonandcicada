@@ -88,16 +88,22 @@ fetcher/build_adcodes.py     全国 adcode→中文名（同源 DataV，供预�
 fetcher/build_extract.py     批量抽取脚手架（官方路径定清单/抓源/引文回查/校验）
 docs/assess-core.js          评估纯函数核心：前端与校准脚本共用的**唯一一把尺子**
 scripts/sanity_check.mjs     判定抽样自检(node)：与前端共用 assess-core，多台风×多城市×多时刻
+scripts/audit_storms.mjs     台风结束后自动全审计的驱动：选城→跑审计→报告入库(docs/data/audits/)
 docs/                        静态前端（MapLibre GL JS，深色底图），GitHub Pages 直接发布此目录
 docs/data/                   抓取器输出（快照 + 对照库 + 历史档案 + 降雨底座 + 预警 + FNV3 复盘）
-.github/workflows/           云端定时：update-data(30min) / warnings(10min) / fnv3(6h) / validate(PR 校验)
+.github/workflows/           云端定时：update-data(30min) / warnings(10min) / fnv3(6h) / storm-audit(每日·台风停编72h后自动审计) / validate(PR 校验)
 ```
 
-改判定逻辑后建议跑一次抽样自检，它复现前端的核心判据、并能注入任意「现在时刻」：
+改判定逻辑后建议跑一次抽样自检，它与前端共用同一个评估核心、并能注入任意「现在时刻」：
 
 ```bash
-node scripts/sanity_check.mjs 202613 --sweep
+node scripts/sanity_check.mjs 202613 --sweep            # 时序稳定性
+node scripts/sanity_check.mjs 202612 --at 2026-07-25T16 --audit --cities 惠州市,汕尾市
+                                                        # 解除态全时序审计（历史回放）
 ```
+
+每场台风停编 72h 后，storm-audit 工作流会**自动**做一次全审计并把报告入库到
+`docs/data/audits/`（公开档案，人人可复核）；发现异常时该 Action 会标红。
 
 对照库分两层，`build_gap` / `build_rain_history` 是「自动覆盖主干」（客观数据保证每座
 城市都有底数），人工 `analogs.json` 是「精品叙事层」（有原文的城市灾情记忆）。详见
