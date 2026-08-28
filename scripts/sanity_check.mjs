@@ -13,6 +13,10 @@
      node scripts/sanity_check.mjs 202618 --event --cities 台州市,温州市
                                           # 事件时间线层(Phase B)：整场事件的档位曲线、
                                           # 峰值档与此刻档的关系（「曾4现2」类事实）
+     node scripts/sanity_check.mjs 202618 --audit --cities 台州市,丽水市
+                                          # 解除态时序审计(Phase C)：沿整场事件每 6h 一个
+                                          # 「查看时刻」，逐刻重演「当时用户看到什么档、
+                                          # 解除条挂不挂」——检验解除时机是否全时序合理
 */
 import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
@@ -87,6 +91,28 @@ async function loadWx(lat, lng) {
     dd < today && d.daily.precipitation_sum[i] != null ? [d.daily.precipitation_sum[i]] : []);
   return { fdata: toFdata(d.hourly), soil: AssessCore.soilFromDaily(ante) };
 }
+/* 审计用：一次拉覆盖整场事件的 archive 天气；soilAt(viewT) 按各查看时刻现算土壤湿度 */
+async function loadWxRange(lat, lng, fromMs, toMs) {
+  const s = new Date(fromMs - 14 * 86400e3 + BJT_OFF).toISOString().slice(0, 10);
+  const e = new Date(toMs + 2 * 86400e3 + BJT_OFF).toISOString().slice(0, 10);
+  let d = await get(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}` +
+    `&start_date=${s}&end_date=${e}&hourly=precipitation,wind_gusts_10m&daily=precipitation_sum&timezone=Asia%2FShanghai`);
+  if (!d.daily || !d.hourly) {
+    // ERA5 archive 有约 5 天延迟——太近的事件退回 forecast API 的 past_days 回溯（上限 92 天）
+    const back = Math.min(92, Math.ceil((Date.now() - (fromMs - 14 * 86400e3)) / 86400e3) + 1);
+    d = await get(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}` +
+      `&hourly=precipitation,wind_gusts_10m&daily=precipitation_sum&past_days=${back}&forecast_days=7&timezone=Asia%2FShanghai`);
+  }
+  const daily = { time: d.daily.time || [], sums: d.daily.precipitation_sum || [] };
+  const soilAt = (viewMs) => {
+    const cutoff = new Date(viewMs + BJT_OFF).toISOString().slice(0, 10);
+    const ante = daily.time.flatMap((dd, i) =>
+      dd < cutoff && daily.sums[i] != null ? [daily.sums[i]] : []);
+    return AssessCore.soilFromDaily(ante).w;
+  };
+  return { fdata: toFdata(d.hourly), soilAt };
+}
+
 async function loadWxArchive(lat, lng, atMs) {
   const s = new Date(atMs - 14 * 86400e3 + BJT_OFF).toISOString().slice(0, 10);
   const e = new Date(atMs + 7 * 86400e3 + BJT_OFF).toISOString().slice(0, 10);
@@ -173,6 +199,44 @@ if (evMode) {
     // 一致性自检：峰值必须 ≥ 所有采样与此刻档
     const bad = ev.samples.filter((sm) => sm.level > ev.peakLevel).length;
     if (bad || ev.base.level > ev.peakLevel) console.log(`  ⚠️ 一致性失败：存在高于峰值的采样`);
+  }
+}
+
+const auditMode = process.argv.includes("--audit");
+if (auditMode) {
+  console.log("\n=== 解除态时序审计（沿整场事件逐刻重演「当时用户看到什么」）===");
+  const LV = ["", "①关注", "②准备", "③戒备", "④高危"];
+  for (const { c, lat, lng } of rows) {
+    // 事件跨度：先以全量视角估一次
+    const wxProbe = at ? null : null;
+    const evFull = AssessCore.assessEvent({ loc: { lat, lng }, storm,
+      fdata: (rows.find((r) => r.c === c) || {}).wx.fdata,
+      soilW: 0, obs: null, nowT: nowMs });
+    if (!evFull.samples.length) { console.log(`\n【${c}】不相关，无事件`); continue; }
+    const span = [evFull.spanStart, evFull.spanEnd];
+    let wxr;
+    try { wxr = await loadWxRange(lat, lng, span[0], span[1]); }
+    catch (e) { console.log(`\n【${c}】archive 拉取失败 ${e.message}`); continue; }
+    console.log(`\n【${c}】事件跨度 ${fmtBJT(span[0])} ~ ${fmtBJT(span[1])}（每 6h 一个查看时刻）`);
+    console.log("  查看时刻            当时档  当时峰值   解除条");
+    let prevRel = false, flip = 0, badOrder = 0, seenPeakGE3 = false;
+    for (let vt = span[0]; vt <= span[1]; vt += 6 * 3.6e6) {
+      const sv = AssessCore.stormAsOf(storm, vt);
+      if (!sv) continue;
+      const soilW = wxr.soilAt(vt);
+      const base = { loc: { lat, lng }, storm: sv, fdata: wxr.fdata, soilW, obs: null, nowT: vt };
+      const a = AssessCore.assess(base);
+      const ev = AssessCore.assessEvent(base);
+      const rel = !!(ev && ev.peakAt && ev.peakAt < vt && ev.peakLevel >= 3 && a.level < ev.peakLevel);
+      if (ev && ev.peakLevel >= 3) seenPeakGE3 = true;
+      if (rel !== prevRel) flip++;
+      if (rel && !seenPeakGE3) badOrder++;
+      prevRel = rel;
+      console.log(`  ${fmtBJT(vt)}     ${LV[a.level].padEnd(4)}  ${LV[ev ? ev.peakLevel : a.level].padEnd(4)}   ` +
+        (rel ? `⚑「${LV[ev.peakLevel].slice(1)}」已解除` : "—"));
+    }
+    console.log(`  → 解除条翻转 ${flip} 次${flip <= 2 ? "（≤2 正常：出现一次" + (flip === 2 ? "" : "、或第二波收回") + "）" : " ⚠️ 频繁闪烁"}` +
+      (badOrder ? `；⚠️ ${badOrder} 处在峰值出现前就挂条` : ""));
   }
 }
 
