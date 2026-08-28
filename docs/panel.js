@@ -397,6 +397,30 @@ const ImpactPanel = (() => {
 
   /* ---------- 评估（核心在 assess-core.js） ---------- */
 
+  /* 事件对象（Phase C 表达层的取数口）：focus 台风才算，5 分钟缓存。
+     assessEvent ≈ 几十次纯计算的 assess 自采样，毫秒级，但 renderResult 触发频繁
+     （改人群/勾情境都会重渲染），缓存避免无谓重算。位置或台风一换即 miss。 */
+  function getEvent(s) {
+    const key = `${P.loc.lat},${P.loc.lng}`;
+    /* 数据未就绪时**不做事件断言、更不缓存**：首次渲染 loadForecast 还在路上，
+       assess 会走「演示估算」分支——快照渐进显示没问题（数据到位即重渲覆盖），
+       但拿估算跑事件采样会得出「曾达高危」这类**错误的事件级结论**并被缓存
+       （实测：丽水全程①，却因首渲染缓存了估算 ev 而挂出「高危已解除」）。
+       宁可暂时不显示解除条，等真实模式数据到位后由 loadForecast 的重渲补上。 */
+    if (!P.forecast[key]) return null;
+    const ck = `${s.tfid}|${key}`;
+    const hit = P._evCache && P._evCache[ck];
+    if (hit && Date.now() - hit.at < 5 * 60e3) return hit.ev;
+    const anteRec = P.antecedent[key];
+    const ev = AssessCore.assessEvent({
+      loc: P.loc, storm: s, fdata: P.forecast[key],
+      soilW: (anteRec && typeof anteRec === "object") ? anteRec.w : 0,
+      obs: nearestObs(P.loc.lat, P.loc.lng), nowT: Date.now(),
+    });
+    (P._evCache = P._evCache || {})[ck] = { at: Date.now(), ev };
+    return ev;
+  }
+
   function assess(s) {
     const key = `${P.loc.lat},${P.loc.lng}`;
     const anteRec = P.antecedent[key];
@@ -805,6 +829,23 @@ const ImpactPanel = (() => {
        这一行回答「这场台风整体对你意味着什么」，两者并存。
        沙德尔·台州教训：14 级从 52km 外掠过 7 小时后，中心已远到 199km、减弱为 10 级，
        行动等级理应回落，但「曾以 14 级近距离掠过」这个事实必须留在页面上。 */
+    /* 解除态（Phase C）：危险回落不静默——官方预警从来是「发布→解除」明确宣布的，
+       我们同样明说。数据出自事件层：峰值档已成过去、当前档明显低于峰值，就宣布
+       「已从峰值回落」。不拖慢回落（那是对用户说谎）、也不抹掉事件事实（峰值留在话里）。
+       沙德尔·台州教训的最终归宿：曾4现2 不再是突兀的静默降档。 */
+    let releasedBrief = "";
+    const ev = getEvent(s);
+    if (ev && ev.peakAt && ev.peakAt < Date.now() &&
+        ev.peakLevel >= 3 && a.level < ev.peakLevel) {
+      const pk = LEVELS[ev.peakLevel], curL = LEVELS[a.level];
+      const pkColor = LV_STYLE[ev.peakLevel].color;
+      const hrsAgo = Math.round((Date.now() - ev.peakAt) / 3.6e6);
+      const whenPk = hrsAgo < 1 ? "刚刚" : hrsAgo < 48 ? `${hrsAgo} 小时前` : `${Math.round(hrsAgo / 24)} 天前`;
+      releasedBrief = `<div class="slow-badge" style="border-left-color:${pkColor}">` +
+        `<b>「${pk.name}」已解除</b> —— 本次风险最高曾达「${pk.name}」（${whenPk}），` +
+        `最强时段已过，当前按「${curL.name}」行动</div>`;
+    }
+
     let peakBrief = "";
     if (a.relevant && a.closest) {
       const cpw = parseInt(a.closest.power) || 0;
@@ -860,6 +901,7 @@ const ImpactPanel = (() => {
       ${aheadBrief}
       ${aiConsensusHtml(s)}
       ${waveBanner}
+      ${releasedBrief}
       ${s.active === false ? `<div class="slow-badge"><b>残余环流</b> —— 已停编，但残涡仍可能强降雨，雨的风险未结束</div>` : ""}
       ${((a.longRain || a.slowThreat) && a.phase !== "after") ? `<div class="slow-badge"><b>风雨持续时间长</b> —— ${
         a.durationH >= 48 ? "预计持续两天以上" : a.durationH ? `预计持续约 ${Math.round(a.durationH)} 小时` : "预计持续偏长"
