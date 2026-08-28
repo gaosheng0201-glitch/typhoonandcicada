@@ -116,8 +116,14 @@ async function loadWxRange(lat, lng, fromMs, toMs) {
 async function loadWxArchive(lat, lng, atMs) {
   const s = new Date(atMs - 14 * 86400e3 + BJT_OFF).toISOString().slice(0, 10);
   const e = new Date(atMs + 7 * 86400e3 + BJT_OFF).toISOString().slice(0, 10);
-  const d = await get(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}` +
+  let d = await get(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}` +
     `&start_date=${s}&end_date=${e}&hourly=precipitation,wind_gusts_10m&daily=precipitation_sum&timezone=Asia%2FShanghai`);
+  if (!d || !d.daily || !d.hourly) {
+    // ERA5 有约 5 天延迟：近期事件退回 forecast API 的 past_days 回溯（上限 92 天）
+    const back = Math.min(92, Math.ceil((Date.now() - (atMs - 14 * 86400e3)) / 86400e3) + 1);
+    d = await get(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}` +
+      `&hourly=precipitation,wind_gusts_10m&daily=precipitation_sum&past_days=${back}&forecast_days=7&timezone=Asia%2FShanghai`);
+  }
   const cutoff = new Date(atMs + BJT_OFF).toISOString().slice(0, 10);
   const ante = (d.daily.time || []).flatMap((dd, i) =>
     dd < cutoff && d.daily.precipitation_sum[i] != null ? [d.daily.precipitation_sum[i]] : []);
