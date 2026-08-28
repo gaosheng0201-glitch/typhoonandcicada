@@ -4,7 +4,7 @@
 
 发现不合理处，欢迎在 [Issues](https://github.com/gaosheng0201-glitch/typhoonandcicada/issues) 提出。
 
-> 所有阈值与判定都在 **`docs/assess-core.js`**（前端与校准脚本共用的纯函数核心，2026-08-28 从 panel.js 抽出；estGaleRadius 权威表在 data.js），本文与代码一一对应；改代码请同步改本文与 CHANGELOG。回归自检：`node scripts/sanity_check.mjs <tfid> [--at ...] [--event] [--sweep]`。
+> 所有阈值与判定都在 **`docs/assess-core.js`**（前端与校准脚本共用的纯函数核心，2026-08-28 从 panel.js 抽出；estGaleRadius 权威表在 data.js），本文与代码一一对应；改代码请同步改本文与 CHANGELOG。回归自检：`node scripts/sanity_check.mjs <tfid> [--at ...] [--event] [--audit] [--sweep]`；每场台风停编 72h 后 CI 自动全审计，报告公开于 [`docs/data/audits/`](docs/data/audits/)。
 
 ---
 
