@@ -103,6 +103,19 @@
   ],
   "remote": true
  },
+ "202618": {
+  "name": "沙德尔",
+  "auditedAt": "2026-09-06 20:48 UTC",
+  "ok": true,
+  "issues": [],
+  "cities": [
+   "梧州市",
+   "梅州市",
+   "温州市",
+   "万宁市"
+  ],
+  "remote": false
+ },
  "202619": {
   "name": "紫檀",
   "auditedAt": "2026-08-29 21:11 UTC",
