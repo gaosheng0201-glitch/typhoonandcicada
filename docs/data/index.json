@@ -1,1 +1,1 @@
-{"updatedAt": "2026-09-13T12:58:44Z", "typhoons": [{"tfid": "20260027", "name": "热带低压", "enName": "NAMELESS", "status": "active", "strong": "热带低压", "power": "6", "lat": 17.2, "lng": 106.9, "lastTime": "2026-09-13 17:00:00", "agencies": ["中国"]}]}
+{"updatedAt": "2026-09-13T16:52:14Z", "typhoons": [{"tfid": "20260027", "name": "热带低压", "enName": "NAMELESS", "status": "residual", "strong": "热带低压", "power": "6", "lat": 17.2, "lng": 106.9, "lastTime": "2026-09-13 17:00:00", "agencies": ["中国"]}]}
