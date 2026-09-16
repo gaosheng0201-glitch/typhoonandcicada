@@ -207,5 +207,18 @@
   "skipped": "数据源无此编号的详情接口",
   "cities": [],
   "remote": false
+ },
+ "20260027": {
+  "name": "热带低压",
+  "auditedAt": "2026-09-16 21:41 UTC",
+  "ok": true,
+  "issues": [],
+  "cities": [
+   "三亚市",
+   "乐东黎族自治县",
+   "东方市",
+   "五指山市"
+  ],
+  "remote": false
  }
 }
