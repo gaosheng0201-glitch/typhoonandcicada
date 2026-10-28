@@ -252,6 +252,19 @@
   ],
   "remote": true
  },
+ "202630": {
+  "name": "蔷琵",
+  "auditedAt": "2026-10-28 22:50 UTC",
+  "ok": true,
+  "issues": [],
+  "cities": [
+   "宜兰县",
+   "基隆市",
+   "台北市",
+   "新北市"
+  ],
+  "remote": false
+ },
  "20260015": {
   "name": "热带低压",
   "auditedAt": "2026-08-28 07:27 UTC",
